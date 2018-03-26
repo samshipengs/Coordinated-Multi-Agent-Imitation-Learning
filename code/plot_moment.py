@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 # import cPickle as pickle
 import _pickle as pickle
+import os
+
 
 color_dict = {
     1610612737: ('#E13A3E', 'ATL'),
@@ -55,36 +57,43 @@ color_dict = {
 
 
 class PlotGame:
-    def __init__(self, gameid, data_dir, game_dir):
+    ''' 
+    see more for plotting: 
+        https://danvatterott.com/blog/2016/06/16/creating-videos-of-nba-action-with-sportsvu-data/
+    '''
+
+    def __init__(self, gameid, main_dir, game_dir):
         # gameid='0021500463'
         self.gameid = gameid
         # directories
-        self.data_dir = data_dir
+        self.main_dir = main_dir
         self.game_dir = game_dir
-        self.court_path = data_dir + 'nba_court_T.png'
+        self.court_path = main_dir + 'nba_court_T.png'
 
-    def load_file2img(self, event_number, moment_number):
-        datta = pd.read_pickle(self.game_dir+self.gameid+'.pkl')
+    def load_data(self, event_number):
+        data = pd.read_pickle(self.game_dir+self.gameid+'.pkl')
+        return data
 
-        num_events = len(datta['events'])
+    def load_moment2img(self, data, event_number, moment_number):
+        num_events = len(data['events'])
 
-        player_fields = datta['events'][0]['home']['players'][0].keys()
+        player_fields = data['events'][0]['home']['players'][0].keys()
 
         # CHANGE THIS
         # specify an event number
         ii = event_number
 
-        home_players = pd.DataFrame(data=[i for i in datta['events'][0]['home']['players']], columns=player_fields)
-        away_players = pd.DataFrame(data=[i for i in datta['events'][0]['visitor']['players']], columns=player_fields)
+        home_players = pd.DataFrame(data=[i for i in data['events'][0]['home']['players']], columns=player_fields)
+        away_players = pd.DataFrame(data=[i for i in data['events'][0]['visitor']['players']], columns=player_fields)
         players = pd.merge(home_players, away_players, how='outer')
         jerseydict = dict(zip(players.playerid.values, players.jersey.values))
 
         # get the position of the players and the ball throughout the event
-        ball_xy = np.array([x[5][0][2:5] for x in datta['events'][ii]['moments']]) #create matrix of ball data
-        player_xy = np.array([np.array(x[5][1:])[:,:4] for x in datta['events'][ii]['moments']]) #create matrix of player data
+        ball_xy = np.array([x[5][0][2:5] for x in data['events'][ii]['moments']]) #create matrix of ball data
+        player_xy = np.array([np.array(x[5][1:])[:,:4] for x in data['events'][ii]['moments']]) #create matrix of player data
 
         # get the play by play data for this clip
-        playbyplay = datta['events'][ii]['playbyplay']
+        playbyplay = data['events'][ii]['playbyplay']
 
 
         team_1_xy_mean = -np.ones((len(player_xy),2))
@@ -96,7 +105,7 @@ class PlotGame:
         jj = moment_number
 
 
-        print('event ' + str(ii) + '/' + str(num_events) + ", moment: "+ str(jj) + '/'+ str(len(player_xy)))
+        print('event ' + str(ii) + '/' + str(num_events) + ", moment: "+ str(jj) + '/'+ str(len(player_xy)), end='\r')
         fig = plt.figure()
         ax = plt.gca() #create axis object
 
@@ -113,18 +122,18 @@ class PlotGame:
         clock_info = ax.annotate('', xy=[94.0/2 - 6.0/1.5 +0.1, 50 - 6.0/1.5 -0.35],
             color='black', horizontalalignment='center', verticalalignment='center')
 
-        if not datta['events'][ii]['moments'][jj][0] == None:
-            quarter = datta['events'][ii]['moments'][jj][0]
+        if not data['events'][ii]['moments'][jj][0] == None:
+            quarter = data['events'][ii]['moments'][jj][0]
         else:
             quarter = 0
 
-        if not datta['events'][ii]['moments'][jj][2] == None:
-            game_clock = datta['events'][ii]['moments'][jj][2]
+        if not data['events'][ii]['moments'][jj][2] == None:
+            game_clock = data['events'][ii]['moments'][jj][2]
         else:
             game_clock = 0
 
-        if not datta['events'][ii]['moments'][jj][3] == None:
-            game_shot = datta['events'][ii]['moments'][jj][3]
+        if not data['events'][ii]['moments'][jj][3] == None:
+            game_shot = data['events'][ii]['moments'][jj][3]
         else:
             game_shot = 0
 
@@ -136,8 +145,8 @@ class PlotGame:
         clock_info.set_text(clock_test)
 
         # the event title
-        temp = str(datta['events'][ii]['home']['abbreviation'])+\
-            ' vs. ' + str(datta['events'][ii]['visitor']['abbreviation'])+\
+        temp = str(data['events'][ii]['home']['abbreviation'])+\
+            ' vs. ' + str(data['events'][ii]['visitor']['abbreviation'])+\
             '\n'
         for idx, pp in playbyplay.iterrows():
             temp = temp + str(pp['HOMEDESCRIPTION'])+ " , " +\
@@ -193,5 +202,41 @@ class PlotGame:
 
         plt.tight_layout(pad=0, w_pad=0.5, h_pad=0)
 
+        # save image
+        save_path = self.game_dir + 'game' + str(self.gameid) + '/' + 'event' + str(event_number) + '/'
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        plt.savefig(save_path + str(moment_number) + '.png')
+        plt.cla()
+        plt.close(fig)
+        # return ax
 
-        return ax
+
+def make_video(images, outvid, fps=20):
+    ''' 
+    Grabbed from here:
+        http://tsaith.github.io/combine-images-into-a-video-with-python-3-and-opencv-3.html
+    '''
+    # Determine the width and height from the first image
+    import cv2
+
+    frame = cv2.imread(images[0])
+    cv2.imshow('video',frame)
+    height, width, channels = frame.shape
+
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v') # Be sure to use lower case
+    out = cv2.VideoWriter(outvid, fourcc, float(fps), (width, height))
+
+    for image in images:
+        frame = cv2.imread(image)
+        out.write(frame) # Write out frame to video
+        # cv2.imshow('video',frame)
+        # if (cv2.waitKey(1) & 0xFF) == ord('q'): # Hit `q` to exit
+        #     break
+
+    # Release everything if job is finished
+    out.release()
+    cv2.destroyAllWindows()
+
+    print("The output video is {}".format(output))

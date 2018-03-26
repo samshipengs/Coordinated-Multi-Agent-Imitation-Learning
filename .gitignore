@@ -4,3 +4,6 @@
 # ignore py cache
 __pycache__
 .ipynb_checkpoints
+
+# ignore all files under data directory
+data/
