@@ -239,4 +239,4 @@ def make_video(images, outvid, fps=20):
     out.release()
     cv2.destroyAllWindows()
 
-    print("The output video is {}".format(output))
+    print("The output video is {}".format(outvid))
