@@ -56,6 +56,18 @@ color_dict = {
 #13 - Start Q2?
 
 
+class LoadData:
+    def __init__(self, main_dir, game_dir):
+        # directories
+        self.main_dir = main_dir
+        self.game_dir = game_dir
+    
+    def load_game(self, gameid):
+        '''return a dataframe from a game'''
+        data = pd.read_pickle(self.game_dir+gameid+'.pkl')
+        return data
+
+
 class PlotGame:
     ''' 
     see more for plotting: 
@@ -69,10 +81,6 @@ class PlotGame:
         self.main_dir = main_dir
         self.game_dir = game_dir
         self.court_path = main_dir + 'nba_court_T.png'
-
-    def load_data(self, event_number):
-        data = pd.read_pickle(self.game_dir+self.gameid+'.pkl')
-        return data
 
     def load_moment2img(self, data, event_number, moment_number):
         num_events = len(data['events'])
