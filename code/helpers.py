@@ -46,3 +46,12 @@ def get_player_trajectory(moments, player_id):
     '''return x,y position of player and x,y,z of the ball'''
     # i[5][0][2:] is the balls x,y,z position
     return [j[2:4] + i[5][0][2:] for i in moments for j in i[5][1:] if j[1] == player_id]
+
+def segment(X, length, overlap=None):
+    ''' 
+    segment a given list of moments to list of chunks each with size length 
+    to do: try to implement overlap option
+    '''
+    n_segs = len(X)//length
+#     return [X[i+(i+1)*length-op:i+(i+2)*length-op] for i in range(0, n_segs)]
+    return [X[i*length:(i+1)*length] for i in range(0, n_segs)]
