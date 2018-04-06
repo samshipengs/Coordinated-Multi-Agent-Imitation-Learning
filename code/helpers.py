@@ -29,16 +29,19 @@ def id_position(event_df):
         for j in home_players_i:
             if j['playerid'] not in position_id_mapping.keys():
                 position_id_mapping[j['playerid']] = [j['position']]
-            elif j['position'] not in position_id_mapping[j['playerid']]:
-                print('Same id is being used for different positions!')
-                position_id_mapping[j['playerid']].append(j['position'])
+            else:
+                if j['position'] not in position_id_mapping[j['playerid']]:
+                    print('Same id is being used for different positions!')
+                    position_id_mapping[j['playerid']].append(j['position'])
                 
         for j in away_players_i:
             if j['playerid'] not in position_id_mapping.keys():
                 position_id_mapping[j['playerid']] = [j['position']]
-            elif j['position'] not in position_id_mapping[j['playerid']]:
-                print('Same id is being used for different positions!')
-                position_id_mapping[j['playerid']].append(j['position'])
+                # print(j['position'])
+            else:
+                if j['position'] not in position_id_mapping[j['playerid']]:
+                    print('Same id is being used for different positions!')
+                    position_id_mapping[j['playerid']].append(j['position'])
     return position_id_mapping
 
 # get player tracking
