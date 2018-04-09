@@ -58,3 +58,45 @@ def segment(X, length, overlap=None):
     n_segs = len(X)//length
 #     return [X[i+(i+1)*length-op:i+(i+2)*length-op] for i in range(0, n_segs)]
     return [X[i*length:(i+1)*length] for i in range(0, n_segs)]
+
+
+# chunk to sequences
+def get_sequences(X, length, dim):
+    ''' 
+    segment a given list of moments to list of chunks each with size length.
+    this is usually used before creating batches.
+    '''
+    n_segs = len(X)//length
+    return np.array([X[i*length:(i+1)*length] for i in range(0, n_segs)]).reshape(-1, length, dim)
+
+
+# chunk to batch
+# define ftn that generates batches
+def get_minibatches(inputs, targets, batchsize, shuffle=False):
+    assert len(inputs) == len(targets)
+    batches = []
+    target_batches = []
+    if shuffle:
+        indices = np.arange(len(inputs))
+        np.random.shuffle(indices)
+    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+        if shuffle:
+            excerpt = indices[start_idx:start_idx + batchsize]
+        else:
+            excerpt = slice(start_idx, start_idx + batchsize)
+        batches.append(inputs[excerpt, :, :])
+        target_batches.append(targets[excerpt])
+    return np.array(batches), np.array(target_batches)
+
+# define ftn that generates batches
+def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
+    assert len(inputs) == len(targets)
+    if shuffle:
+        indices = np.arange(len(inputs))
+        np.random.shuffle(indices)
+    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+        if shuffle:
+            excerpt = indices[start_idx:start_idx + batchsize]
+        else:
+            excerpt = slice(start_idx, start_idx + batchsize)
+        yield inputs[excerpt], targets[excerpt]
