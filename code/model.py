@@ -2,19 +2,10 @@ import tensorflow as tf
 from tensorflow.python.ops.rnn import _transpose_batch_time
 
 
-
-def length(sequence):
-    used = tf.sign(tf.reduce_max(tf.abs(sequence), reduction_indices=0))
-    length = tf.reduce_sum(used, reduction_indices=1)
-    length = tf.cast(length, tf.int32)
-    print(length.get_shape(), sequence.get_shape())
-    return length.get_shape()[-1].value
-
-def sampling_rnn(cell, initial_state, input_, batch_size):    
+def sampling_rnn(cell, initial_state, input_, batch_size, seq_lengths):    
     # raw_rnn expects time major inputs as TensorArrays
-    # max_time = seq_lengths  # this is the max time step per batch
-    max_time = length(input_)
-    # max_time = input_
+    max_time = seq_lengths  # this is the max time step per batch
+    # max_time = length(input_)
     print('>>>>>>>>>>>>>>', max_time, '<<<<<<<<<<<<<<')
     inputs_ta = tf.TensorArray(dtype=tf.float32, size=max_time, clear_after_read=False)
     inputs_ta = inputs_ta.unstack(_transpose_batch_time(input_))  # model_input is the input placeholder
@@ -53,6 +44,7 @@ def sampling_rnn(cell, initial_state, input_, batch_size):
         # check which elements are finished
         elements_finished = (time >= max_time)
         finished = tf.reduce_all(elements_finished)
+        print('finished value:', finished, '=====================\n')
 
         # assemble cell input for upcoming time step
         current_output = emit_output if cell_output is not None else None
