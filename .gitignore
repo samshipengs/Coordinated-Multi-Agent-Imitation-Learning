@@ -7,3 +7,9 @@ __pycache__
 
 # ignore all files under data directory
 data/
+
+# tensorflow model files
+checkpoint
+*.data-*
+*.meta
+*.index
