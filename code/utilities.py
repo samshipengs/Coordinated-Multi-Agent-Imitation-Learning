@@ -66,6 +66,9 @@ class LoadData:
         '''return a dataframe from a game'''
         data = pd.read_pickle(self.game_dir+gameid+'.pkl')
         return data
+    
+    def load_csv(self, file_name):
+        return pd.read_csv(file_name)
 
 
 class PlotGame:

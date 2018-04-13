@@ -19,6 +19,15 @@ def id_player(event_df):
                 print('Same id is being used for different players!')
     return player_id_mapping
 
+def check_game_roles_duplicates(id_role_mapping):
+    '''input a dictionary contains id_role mapping for a single game events,
+        check if there are role swaps.'''
+    n_dup = 0
+    for i in id_role_mapping.values():
+        if len(i) > 1:
+            n_dup += 1
+    return n_dup 
+
 def id_position(event_df):
     # get position mapping
     # get all the player_id and player_name mapping
@@ -43,6 +52,32 @@ def id_position(event_df):
                     print('Same id is being used for different positions!')
                     position_id_mapping[j['playerid']].append(j['position'])
     return position_id_mapping
+
+def id_teams(event_dfs):
+    def id_team_(event_df):
+        one_row = event_df.loc[0] 
+        home_id = one_row.home['teamid']
+        home_team = one_row.home['name'].lower()
+
+        away_id = one_row.visitor['teamid']
+        away_team = one_row.visitor['name'].lower()
+        return home_id, home_team, away_id, away_team
+    result = {}
+    for i in event_dfs:
+        id1, name1, id2, name2 = id_team_(i)
+        ks = result.keys()
+        if id1 in ks:
+            if result[id1] != name1:
+                raise ValueError('team id is duplicated!')
+        else:
+            result[id1] = name1
+        if id2 in ks:
+            if result[id2] != name2:
+                raise ValueError('team id is duplicated!')
+        else:
+            result[id2] = name2
+    return result
+
 
 # get player tracking
 def get_player_trajectory(moments, player_id):
