@@ -6,7 +6,10 @@ __pycache__
 .ipynb_checkpoints/
 
 # ignore all files under data directory
-data/
+#data/
+*.pkl
+*.png
+*.mp4
 
 # tensorflow model files
 checkpoint
