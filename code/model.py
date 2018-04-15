@@ -109,28 +109,37 @@ def rnn_horizon(cell, initial_state, input_, batch_size, seq_lengths, output_dim
             # here you can do whatever ou want with cell_output before assigning it to emit_output.
             # In this case, we don't do anything
             next_cell_state = cell_state
-#             emit_output = cell_output 
+            # emit_output = cell_output 
             emit_output = tf.contrib.layers.fully_connected(inputs=cell_output, num_outputs=output_dim)
+
         # check which elements are finished
         elements_finished = (time >= max_time)
         finished = tf.reduce_all(elements_finished)
 
         # assemble cell input for upcoming time step
         current_output = emit_output if cell_output is not None else None
-        input_original = inputs_ta.read(time)  # tensor of shape (None, input_dim)
+        # input_original = inputs_ta.read(time)  # tensor of shape (None, input_dim)
         if current_output is None:
             # this is the initial step, i.e. there is no output from a previous time step, what we feed here
             # can highly depend on the data. In this case we just assign the actual input in the first time step.
+            input_original = inputs_ta.read(time)  # tensor of shape (None, input_dim)
             next_in = input_original
+            next_input = tf.cond(finished,
+                        lambda: tf.zeros([batch_size, input_dim], dtype=tf.float32),  # copy through zeros
+                        lambda: next_in)  # if not finished, feed the previous output as next input
+            
         else:
             # time > 0, so just use previous output as next input
             # here you could do fancier things, whatever you want to do before passing the data into the rnn cell
             # if here you were to pass input_original than you would get the normal behaviour of dynamic_rnn
-            next_in = input_original
+            # next_in = input_original
             # next_in = current_output
-        next_input = tf.cond(finished,
-                             lambda: tf.zeros([batch_size, input_dim], dtype=tf.float32),  # copy through zeros
-                             lambda: next_in)  # if not finished, feed the previous output as next input
+            # next_in[:, :2] = current_output 
+            next_input = tf.cond(finished,
+                                lambda: tf.zeros([batch_size, input_dim], dtype=tf.float32),  # copy through zeros
+                                lambda: tf.concat((current_output, inputs_ta.read(time)[:, 2:]), axis=1))
+                                
+                                # lambda: inputs_ta.read(time))# next_in)  # if not finished, feed the previous output as next input
         # set shape manually, otherwise it is not defined for the last dimensions
         next_input.set_shape([None, input_dim])
         # loop state not used in this example
