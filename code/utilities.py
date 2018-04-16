@@ -86,6 +86,10 @@ class PlotGame:
         self.court_path = main_dir + 'nba_court_T.png'
 
     def load_moment2img(self, data, event_number, moment_number):
+        '''load_moment2img
+        Given a game data, a certain event_number and a particular moment number,
+        save the court plus players and ball info as an image to a directoy. 
+        '''
         num_events = len(data['events'])
 
         player_fields = data['events'][0]['home']['players'][0].keys()

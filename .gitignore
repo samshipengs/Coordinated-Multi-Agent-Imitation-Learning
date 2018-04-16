@@ -16,3 +16,6 @@ checkpoint
 *.data-*
 *.meta
 *.index
+
+# tensorboard logs
+events.*

@@ -23,6 +23,7 @@ def id_player(event_df):
                 print('Same id is being used for different players!')
     return player_id_mapping
 
+
 def check_game_roles_duplicates(id_role_mapping):
     '''
         input a dictionary contains id_role mapping for a single game events,
@@ -33,6 +34,7 @@ def check_game_roles_duplicates(id_role_mapping):
         if len(i) > 1:
             n_dup += 1
     return n_dup 
+
 
 def id_position(event_df):
     '''
@@ -61,6 +63,7 @@ def id_position(event_df):
                     print('Same id is being used for different positions!')
                     position_id_mapping[j['playerid']].append(j['position'])
     return position_id_mapping
+
 
 def id_teams(event_dfs):
     '''
@@ -98,6 +101,7 @@ def get_player_trajectory(moments, player_id):
     '''
     # i[5][0][2:] is the balls x,y,z position
     return [j[2:4] + i[5][0][2:] for i in moments for j in i[5][1:] if j[1] == player_id]
+
 
 def segment(X, length, overlap=None):
     ''' 
@@ -230,7 +234,13 @@ def process_moments(moments, homeid, awayid, id_role, role_order):
     # init one hot encoding
     ohe = OneHotEncoding()
     result = []
+    shot_clock = []
     for i in range(len(moments)):
+        # also record shot clocks for each of the moment/frame, this is used to
+        # seperate a sequence into different frames (since when shot clock resets,
+        # it usually implies a different state of game)
+        shot_clock.append(moments[i][3])
+        
         # ball position array
         dm = len(moments[i][5])
         ball_ind = -1
@@ -267,4 +277,4 @@ def process_moments(moments, homeid, awayid, id_role, role_order):
         # stack on the ball position
         result.append(np.column_stack((hv, np.repeat(ball, hv.shape[0],0))))
     result = np.array(result) 
-    return result.reshape(result.shape[0], -1)
+    return result.reshape(result.shape[0], -1), shot_clock
