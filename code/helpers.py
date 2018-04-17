@@ -209,8 +209,9 @@ class OneHotEncoding:
         cat = pd.read_csv('./meta_data/id_team.csv')
         # binary encode
         # ensure uniqueness
-        assert sum(cat.team_id.duplicated()) == 0
-        self.mapping = dict(zip(cat.team_id, range(0, len(cat)))) 
+        # assert sum(cat.team_id.duplicated()) == 0
+        # self.mapping = dict(zip(cat.team_id, range(0, len(cat)))) # temporarily just one hot encode two teams
+        self.mapping = {1610612741:0, 1610612761:1}
 
     def encode(self, teams):
         nb_classes = len(self.mapping)
