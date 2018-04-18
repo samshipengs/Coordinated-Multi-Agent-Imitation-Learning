@@ -54,7 +54,7 @@ color_dict = {
 #10 - Jumpball
 #12 - Start Q1?
 #13 - Start Q2?
-
+# there are empty playbyplay, what are those?
 
 class LoadData:
     def __init__(self, main_dir, game_dir):
