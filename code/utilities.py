@@ -85,7 +85,7 @@ class PlotGame:
         self.game_dir = game_dir
         self.court_path = main_dir + 'nba_court_T.png'
 
-    def load_moment2img(self, data, event_number, moment_number):
+    def load_moment2img(self, data, event_number, moment_number, return_img=False):
         '''load_moment2img
         Given a game data, a certain event_number and a particular moment number,
         save the court plus players and ball info as an image to a directoy. 
@@ -217,14 +217,16 @@ class PlotGame:
 
         plt.tight_layout(pad=0, w_pad=0.5, h_pad=0)
 
-        # save image
-        save_path = self.game_dir + 'game' + str(self.gameid) + '/' + 'event' + str(event_number) + '/'
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
-        plt.savefig(save_path + str(moment_number) + '.png')
-        plt.cla()
-        plt.close(fig)
-        # return ax
+        if return_img:
+            return ax
+        else:
+            # save image
+            save_path = self.game_dir + 'game' + str(self.gameid) + '/' + 'event' + str(event_number) + '/'
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            plt.savefig(save_path + str(moment_number) + '.png')
+            plt.cla()
+            plt.close(fig)
 
     def load_pred_moment2img(self, data, event_number, moment_number):
         num_events = len(data['events'])
