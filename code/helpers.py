@@ -239,6 +239,8 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
     ohe = OneHotEncoding()
     result = []
     shot_clock = []
+    # half court = 94/2
+    half_court = 47.
     for i in range(len(moments)):
         # get quarter number
         quarter_number = moments[i][0]
@@ -290,18 +292,18 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
         if quarter_number <= 2: # first half
             # print('first half')
             if court_index[game_id] == 0:
-                # print(hpp.shape, sum(hpp[:, 1]<=45), sum(vpp[:, 1]<=45))
+                # print(hpp.shape, sum(hpp[:, 1]<=half_court), sum(vpp[:, 1]<=half_court))
                 # break
                 # all the left players on the left side,
                 # and the right court players also on the left side
-                if sum(hpp[:, 1]<=45)==5 and sum(vpp[:, 1]<=45)==5:
+                if sum(hpp[:, 1]<=half_court)==5 and sum(vpp[:, 1]<=half_court)==5:
                     hv = np.vstack((h,v))
                 else:
                     continue
             else:
                 # all the left players on the right side,
                 # and the right court players also on the right side
-                if sum(hpp[:, 1]>=45)==5 and sum(vpp[:, 1]>=45)==5:
+                if sum(hpp[:, 1]>=half_court)==5 and sum(vpp[:, 1]>=half_court)==5:
                     hv = np.vstack((v,h))
                 else:
                     continue
@@ -310,7 +312,7 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
             if court_index[game_id] == 0:
                 # all the left players on the left side,
                 # and the right court players also on the left side
-                if sum(hpp[:, 1]<=45)==5 and sum(vpp[:, 1]<=45)==5:
+                if sum(hpp[:, 1]<=half_court)==5 and sum(vpp[:, 1]<=half_court)==5:
                     # now the defend team is the team2, v
                     hv = np.vstack((v,h))
                 else:
@@ -318,7 +320,7 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
             else:
                 # all the left players on the right side,
                 # and the right court players also on the right side
-                if sum(hpp[:, 1]>=45)==5 and sum(vpp[:, 1]>=45)==5:
+                if sum(hpp[:, 1]>=half_court)==5 and sum(vpp[:, 1]>=half_court)==5:
                     hv = np.vstack((h,v))
                 else:
                     continue
