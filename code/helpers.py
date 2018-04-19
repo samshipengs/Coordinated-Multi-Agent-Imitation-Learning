@@ -243,10 +243,8 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
         # get quarter number
         quarter_number = moments[i][0]
         # print(type(quarter_number))
-        # also record shot clocks for each of the moment/frame, this is used to
-        # seperate a sequence into different frames (since when shot clock resets,
-        # it usually implies a different state of game)
-        shot_clock.append(moments[i][3])
+
+        # print(moments[i][3], '====')
         
         # ball position array
         dm = len(moments[i][5])
@@ -327,11 +325,19 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
         if len(hv) == 0:
             continue
         # print(hv)
+
+
+
+        # also record shot clocks for each of the moment/frame, this is used to
+        # seperate a sequence into different frames (since when shot clock resets,
+        # it usually implies a different state of game)
+        shot_clock.append(moments[i][3])
         # stack on the ball position
         result.append(np.column_stack((hv, np.repeat(ball, hv.shape[0],0))))
+    # print(len(result), len(moments), '??????????')
     if len(result) == 0:
         return None
     else:
         result = np.array(result) 
-        # print(result)
+        # print(result.shape, '````````')
         return result.reshape(result.shape[0], -1), shot_clock

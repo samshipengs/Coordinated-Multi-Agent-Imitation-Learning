@@ -137,7 +137,7 @@ def rnn_horizon(cell, initial_state, input_, batch_size, seq_lengths, output_dim
             # next_in[:, :2] = current_output 
             next_input = tf.cond(finished,
                                 lambda: tf.zeros([batch_size, input_dim], dtype=tf.float32),  # copy through zeros
-                                lambda: tf.concat((current_output, inputs_ta.read(time)[:, 2:]), axis=1))
+                                lambda: tf.concat((current_output, inputs_ta.read(time)[:, 2:]), axis=1))    # replace the original true input with last step prediction 
                                 
                                 # lambda: inputs_ta.read(time))# next_in)  # if not finished, feed the previous output as next input
         # set shape manually, otherwise it is not defined for the last dimensions
