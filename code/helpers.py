@@ -248,13 +248,9 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
     for i in range(len(moments)):
         # get quarter number
         quarter_number = moments[i][0]
-        # print(type(quarter_number))
 
-        # print(moments[i][3], '====')
-        
         # ball position array
         dm = len(moments[i][5])
-        # ball_ind = -1
         player_ind = -1
         if dm == 11: # ball is present
             ball = np.array([moments[i][5][0][2:]])
@@ -269,10 +265,6 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
             continue
         # get player position data
         pp = np.array(moments[i][5][player_ind:])
-        # # home
-        # hpp = pp[pp[:, 0]==homeid, :]
-        # # visitor
-        # vpp = pp[pp[:, 0]==awayid, :]
         
         # home (update: instead of using home/visitor, we will just follow court index)
         # ignore last null column
@@ -282,21 +274,9 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
         # add one hot encoding for the teams
         h_team = hpp[:, 0]
         v_team = vpp[:, 0]
-        # print(h_team, '='*10, v_team)
-        # break
         # stack on the one hot encoding and leave the team id
-        # print('vpp before stacking order moment:\n', vpp[:, 1:], '\n')
         hpp = np.column_stack((hpp[:, 1:], ohe.encode(h_team)))
         vpp = np.column_stack((vpp[:, 1:], ohe.encode(v_team)))
-        # print('vpp after stacking:', vpp)
-        # break
-        # print(hpp, '\n'*2, vpp)
-        # break
-        # hpp = hpp[:, 1:]
-        # vpp = vpp[:, 1:]
-        
-        # reorder
-        # [:,:-1] ignores the last null element
         
         h = order_moment(hpp, id_role, role_order)
         v = order_moment(vpp, id_role, role_order)
@@ -305,12 +285,8 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
         # combine home and visit => update: in defend then offend order
         game_id = int(game_id)
         hv = []
-        # print('>>>>>>>>>>', court_index[game_id])
         if quarter_number <= 2: # first half
-            # print('first half')
             if court_index[game_id] == 0:
-                # print(hpp.shape, sum(hpp[:, 1]<=half_court), sum(vpp[:, 1]<=half_court))
-                # break
                 # all the left players on the left side,
                 # and the right court players also on the left side
                 if sum(hpp[:, 1]<=half_court)==5 and sum(vpp[:, 1]<=half_court)==5:
@@ -325,7 +301,6 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
                 else:
                     continue
         elif quarter_number > 2: # second half the court position is switched
-            # print('second half')
             if court_index[game_id] == 0:
                 # all the left players on the left side,
                 # and the right court players also on the left side
@@ -343,7 +318,6 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
                     continue
         if len(hv) == 0:
             continue
-        # print(hv)
 
         # also record shot clocks for each of the moment/frame, this is used to
         # seperate a sequence into different frames (since when shot clock resets,
@@ -352,22 +326,107 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
 
         # only get the necessary parts
         ohe_i = list(hv[0][2:]) + list(hv[extreme*5][2:]) # first team's (defending) one hot concat with second 
-        # print(hv)
         resulti = hv[:, :2] # just the player's position
-        # print('hv[:, 2]', hv[:, :2])
         # stack on the ball position
         resulti = list(np.array(resulti).reshape(-1)) + list(ball.reshape(-1)) + ohe_i
-        # result.append(np.column_stack((hv, np.repeat(ball, hv.shape[0],0))))
-        # print(len(resulti), resulti)
         result.append(resulti)
-        # break
-    if n_balls_missing!=0: print('n_balls_missing:', n_balls_missing)
-    # print(len(result), len(moments), '??????????')
+
+    # if n_balls_missing!=0: print('n_balls_missing:', n_balls_missing)
+    
     if len(result) == 0:
         return None
     else:
-        # result = np.array(result) 
-        # print(np.array(result).shape, '````````')
         return np.array(result), shot_clock         
+
+
+def get_game_data(events, id_role, role_order, court_index, game_id, event_threshold=10, subsample_factor=3):
+    '''
+        events: a single game's events dataframe
         
-        # return result.reshape(result.shape[0], -1), shot_clock
+        return: a list of events, each event consists a sequence of moments 
+    '''
+    # %%time
+    homeid = events.loc[0].home['teamid']
+    awayid = events.loc[0].visitor['teamid']
+    single_game = []
+    # sc = 24. # init 24s shot clock
+
+    # filter out seq length less than threshold, this has to be greater than 2
+    # otherwise, there might be duplicates appearing
+    len_th = event_threshold    # the number of moments in a single event need to satisfy
+    n = 0    # record number that satisfies the threshold
+    n_short = 0    # number that doesnt match
+    for k, v in enumerate(events.moments.values):
+        result_i = process_moments(v, homeid, awayid, id_role, role_order, court_index, game_id)
+        if result_i == None:
+            continue
+        else:
+            s1 = 0 # index that divides the sequence, this usually happens for 24s shot clock
+            pm, scs = result_i
+            for i in range(len(scs)-1):
+                # sometimes there are None shot clock value
+                if scs[i] != None and scs[i+1] == None:
+                    if len(scs[s1:i+1]) >= len_th:
+                        single_game.append(pm[s1:i+1])
+                        n += 1
+                    else:
+                        n_short += 1
+                    s1 = i+1
+                elif scs[i] == None:
+                    s1 += 1
+                elif scs[i+1] >= scs[i]:
+                    if len(scs[s1:i+1]) >= len_th:
+                        single_game.append(pm[s1:i+1])
+                        n += 1
+                    else:
+                        n_short += 1
+                    s1 = i+1
+            # grab the end piece
+            if s1 != len(scs)-2:
+                if len(scs[s1:]) >= len_th:
+                    single_game.append(pm[s1:])
+                    n += 1
+                else:
+                    n_short += 1
+    # dimensions extreme<3> x n_players<10> x (player_pos<2> + teamid_onehot<25> + ball<3>) = 900
+    # dimensions = extreme<3> x n_players<10> x player_pos<2> + teamid_onehot<4> + ball<3> = 67
+
+    if subsample_factor != 0: # do subsample
+        print('subsample enabled with subsample factor', subsample_factor)
+        return [subsample_sequence(m, subsample_factor) for m in single_game]
+    else:
+        return single_game#, (n, n_short)
+
+
+def filter_event_type(events_df, discard_event):
+    '''
+        events_df: a single game events dataframe
+        discard_event: a list of integers of event types to be discarded
+
+        return: a event df with dicard_event filtered out
+    '''
+    def filter_events_(x, discard_event):
+        etype = x['EVENTMSGTYPE'].values
+        if len(set(etype).intersection(discard_event))!=0 or len(etype) ==0:
+            # if the event contains discard events or if the event type is an empty list
+            return False
+        else:
+            return True
+    
+    events = events_df[events_df.playbyplay.apply(lambda x: filter_events_(x, discard_event))].copy()
+    events.reset_index(drop=True, inplace=True)
+    return events
+
+def subsample_sequence(moments, subsample_factor):#, random_state=42):
+    seqs = np.copy(moments)
+    moments_len = seqs.shape[0]
+    n_intervals = moments_len//subsample_factor # number of subsampling intervals
+    left = moments_len % subsample_factor # reminder
+    if left != 0:
+        rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)] + [np.random.randint(0, left)]
+    else:
+        rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)]
+    interval_ind = range(0, moments_len, subsample_factor)
+    # the final random index relative to the input
+    rs_ind = np.array([rs[i] + interval_ind[i] for i in range(len(rs))])
+    return seqs[rs_ind, :]
