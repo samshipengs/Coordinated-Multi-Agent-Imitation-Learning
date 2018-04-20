@@ -215,12 +215,15 @@ class OneHotEncoding:
 
     def encode(self, teams):
         nb_classes = len(self.mapping)
+        # for i in teams:
+        #     print(int(i), i)
+
         targets = np.array([self.mapping[int(i)] for i in teams])
         one_hot_targets = np.eye(nb_classes)[targets]
-        
+        # print(one_hot_targets)
         return one_hot_targets
     
-def process_moments(moments, homeid, awayid, id_role, role_order, court_index, game_id):
+def process_moments(moments, homeid, awayid, id_role, role_order, court_index, game_id, extreme=3):
     '''
         moments: a list of moment(frame)
         homeid: home team's team_id
@@ -241,6 +244,7 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
     shot_clock = []
     # half court = 94/2
     half_court = 47.
+    n_balls_missing = 0
     for i in range(len(moments)):
         # get quarter number
         quarter_number = moments[i][0]
@@ -256,6 +260,8 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
             ball = np.array([moments[i][5][0][2:]])
             player_ind = 1
         elif dm == 10 and moments[i][5][0][:2] != [-1,-1]: # ball is not present
+            # print('Ball is not present.')
+            n_balls_missing += 1
             ball = np.array([[-1, -1, -1]])
             player_ind = 0
         else:
@@ -269,20 +275,31 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
         # vpp = pp[pp[:, 0]==awayid, :]
         
         # home (update: instead of using home/visitor, we will just follow court index)
-        hpp = pp[:5, :] # team1
+        # ignore last null column
+        hpp = pp[:5, :-1] # team1
         # visitor
-        vpp = pp[5:, :] # team2
+        vpp = pp[5:, :-1] # team2
         # add one hot encoding for the teams
         h_team = hpp[:, 0]
         v_team = vpp[:, 0]
+        # print(h_team, '='*10, v_team)
+        # break
         # stack on the one hot encoding and leave the team id
+        # print('vpp before stacking order moment:\n', vpp[:, 1:], '\n')
         hpp = np.column_stack((hpp[:, 1:], ohe.encode(h_team)))
         vpp = np.column_stack((vpp[:, 1:], ohe.encode(v_team)))
+        # print('vpp after stacking:', vpp)
+        # break
+        # print(hpp, '\n'*2, vpp)
+        # break
+        # hpp = hpp[:, 1:]
+        # vpp = vpp[:, 1:]
         
         # reorder
         # [:,:-1] ignores the last null element
-        h = order_moment(hpp[:, :-1], id_role, role_order)
-        v = order_moment(vpp[:, :-1], id_role, role_order)
+        
+        h = order_moment(hpp, id_role, role_order)
+        v = order_moment(vpp, id_role, role_order)
         # note, the player_id is discarded after order_moment
 
         # combine home and visit => update: in defend then offend order
@@ -328,18 +345,29 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
             continue
         # print(hv)
 
-
-
         # also record shot clocks for each of the moment/frame, this is used to
         # seperate a sequence into different frames (since when shot clock resets,
         # it usually implies a different state of game)
         shot_clock.append(moments[i][3])
+
+        # only get the necessary parts
+        ohe_i = list(hv[0][2:]) + list(hv[extreme*5][2:]) # first team's (defending) one hot concat with second 
+        # print(hv)
+        resulti = hv[:, :2] # just the player's position
+        # print('hv[:, 2]', hv[:, :2])
         # stack on the ball position
-        result.append(np.column_stack((hv, np.repeat(ball, hv.shape[0],0))))
+        resulti = list(np.array(resulti).reshape(-1)) + list(ball.reshape(-1)) + ohe_i
+        # result.append(np.column_stack((hv, np.repeat(ball, hv.shape[0],0))))
+        # print(len(resulti), resulti)
+        result.append(resulti)
+        # break
+    if n_balls_missing!=0: print('n_balls_missing:', n_balls_missing)
     # print(len(result), len(moments), '??????????')
     if len(result) == 0:
         return None
     else:
-        result = np.array(result) 
-        # print(result.shape, '````````')
-        return result.reshape(result.shape[0], -1), shot_clock
+        # result = np.array(result) 
+        # print(np.array(result).shape, '````````')
+        return np.array(result), shot_clock         
+        
+        # return result.reshape(result.shape[0], -1), shot_clock
