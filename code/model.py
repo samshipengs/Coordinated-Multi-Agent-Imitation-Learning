@@ -75,7 +75,7 @@ def sampling_rnn(cell, initial_state, input_, batch_size, seq_lengths):
     return outputs, final_state
 
 
-def rnn_horizon(cell, initial_state, input_, batch_size, seq_lengths, output_dim):    
+def rnn_horizon(cell, initial_state, input_, batch_size, seq_lengths, horizon, output_dim):    
     # raw_rnn expects time major inputs as TensorArrays
     max_time = seq_lengths  # this is the max time step per batch
     inputs_ta = tf.TensorArray(dtype=tf.float32, size=max_time, clear_after_read=False)
@@ -137,9 +137,9 @@ def rnn_horizon(cell, initial_state, input_, batch_size, seq_lengths, output_dim
             # next_in[:, :2] = current_output 
             next_input = tf.cond(finished,
                                 lambda: tf.zeros([batch_size, input_dim], dtype=tf.float32),  # copy through zeros
-                                lambda: tf.concat((current_output, inputs_ta.read(time)[:, 2:]), axis=1))    # replace the original true input with last step prediction 
+                                # lambda: tf.concat((current_output, inputs_ta.read(time)[:, 2:]), axis=1))    # replace the original true input with last step prediction 
                                 
-                                # lambda: inputs_ta.read(time))# next_in)  # if not finished, feed the previous output as next input
+                                lambda: inputs_ta.read(time))# next_in)  # if not finished, feed the previous output as next input
         # set shape manually, otherwise it is not defined for the last dimensions
         next_input.set_shape([None, input_dim])
         # loop state not used in this example
