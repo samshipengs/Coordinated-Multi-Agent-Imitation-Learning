@@ -94,22 +94,22 @@ def id_teams(event_dfs):
     return result
 
 
-# get player tracking
-def get_player_trajectory(moments, player_id):
-    '''
-        return x,y position of player and x,y,z of the ball
-    '''
-    # i[5][0][2:] is the balls x,y,z position
-    return [j[2:4] + i[5][0][2:] for i in moments for j in i[5][1:] if j[1] == player_id]
+# # get player tracking
+# def get_player_trajectory(moments, player_id):
+#     '''
+#         return x,y position of player and x,y,z of the ball
+#     '''
+#     # i[5][0][2:] is the balls x,y,z position
+#     return [j[2:4] + i[5][0][2:] for i in moments for j in i[5][1:] if j[1] == player_id]
 
 
-def segment(X, length, overlap=None):
-    ''' 
-        segment a given list of moments to list of chunks each with size length 
-        to do: try to implement overlap option
-    '''
-    n_segs = len(X)//length
-    return [X[i*length:(i+1)*length] for i in range(0, n_segs)]
+# def segment(X, length, overlap=None):
+#     ''' 
+#         segment a given list of moments to list of chunks each with size length 
+#         to do: try to implement overlap option
+#     '''
+#     n_segs = len(X)//length
+#     return [X[i*length:(i+1)*length] for i in range(0, n_segs)]
 
 
 # chunk to sequences
@@ -345,7 +345,7 @@ def get_game_data(events, id_role, role_order, court_index, game_id, event_thres
         
         return: a list of events, each event consists a sequence of moments 
     '''
-    # %%time
+    # 
     homeid = events.loc[0].home['teamid']
     awayid = events.loc[0].visitor['teamid']
     single_game = []
