@@ -144,7 +144,7 @@ def get_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = indices[start_idx:start_idx + batchsize]
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        batches.append(inputs[excerpt, :, :])
+        batches.append(inputs[excerpt])
         target_batches.append(targets[excerpt])
     return np.array(batches), np.array(target_batches)
 
