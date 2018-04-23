@@ -93,33 +93,34 @@ def id_teams(event_dfs):
             result[id2] = name2
     return result
 
-
-# # get player tracking
-# def get_player_trajectory(moments, player_id):
-#     '''
-#         return x,y position of player and x,y,z of the ball
-#     '''
-#     # i[5][0][2:] is the balls x,y,z position
-#     return [j[2:4] + i[5][0][2:] for i in moments for j in i[5][1:] if j[1] == player_id]
-
-
-# def segment(X, length, overlap=None):
+# # chunk to sequences
+# def get_sequences(X, length, dim):
 #     ''' 
-#         segment a given list of moments to list of chunks each with size length 
-#         to do: try to implement overlap option
+#     segment a given list of moments to list of chunks each with size length.
+#     this is usually used before creating batches.
 #     '''
 #     n_segs = len(X)//length
-#     return [X[i*length:(i+1)*length] for i in range(0, n_segs)]
+#     return np.array([X[i*length:(i+1)*length] for i in range(0, n_segs)]).reshape(-1, length, dim)
 
-
-# chunk to sequences
-def get_sequences(X, length, dim):
-    ''' 
-    segment a given list of moments to list of chunks each with size length.
-    this is usually used before creating batches.
-    '''
-    n_segs = len(X)//length
-    return np.array([X[i*length:(i+1)*length] for i in range(0, n_segs)]).reshape(-1, length, dim)
+def get_sequences(single_game, sequence_length, overlap):
+    train = []
+    target = []
+    for i in single_game:
+        i_len = len(i)
+        if i_len < sequence_length:
+            sequences = np.pad(np.array(i), [(0, sequence_length-i_len), (0,0)], mode='constant')
+            targets = [np.roll(sequences[:, :2], -1, axis=0)[:-1, :]]
+            sequences = [sequences[:-1, :]]
+        else:
+            # https://stackoverflow.com/questions/48381870/a-better-way-to-split-a-sequence-in-chunks-with-overlaps
+            sequences = [np.array(i[-sequence_length:]) if j + sequence_length > i_len-1 else np.array(i[j:j+sequence_length]) \
+                for j in range(0, i_len-overlap, sequence_length-overlap)]
+            targets = [np.roll(k[:, :2], -1, axis=0)[:-1, :] for k in sequences] # drop the last row as the rolled-back is not real
+            sequences = [l[:-1, :] for l in sequences] # since target has dropped one then sequence also drop one
+        
+        train += sequences
+        target += targets
+    return train, target
 
 
 # chunk to batch
@@ -430,3 +431,18 @@ def subsample_sequence(moments, subsample_factor):#, random_state=42):
     # the final random index relative to the input
     rs_ind = np.array([rs[i] + interval_ind[i] for i in range(len(rs))])
     return seqs[rs_ind, :]
+
+
+def get_velocity(event, dim1, fs):
+    ''' 
+        event: an array where each row is a moment/frame, columns are the input feature vectors
+        dim1: the position dimensions before adding velocities 
+        fs: time lapse from frame to next frame
+
+        note: the last column is discarded because theres no velocity info for it
+    '''
+    pos = event[:, :dim1]
+    next_pos = np.copy(np.roll(pos,-1, axis=0)[:, :dim1])
+    vel = (next_pos - pos)/fs
+    return np.column_stack((event[:-1, :], vel[:-1, :]))
+

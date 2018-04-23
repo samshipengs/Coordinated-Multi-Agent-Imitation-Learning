@@ -391,3 +391,23 @@ def make_video(images, outvid, fps=20):
     cv2.destroyAllWindows()
 
     print("The output video is {}".format(outvid))
+
+
+def plot_check(single_game, plt_ind=0, extreme=3):
+    '''  
+        Use plot to check if the game (list of events where each event is a list of moments) data
+        is correct or not
+    ''' 
+    # cerate a simple plot shows the trajectory
+    assert plt_ind < len(single_game), 'The plotting index is larger than the length of the game.'
+    g = single_game[plt_ind]
+    plt.figure(figsize=(5,7))
+    extreme = int(extreme)
+    # create color scheme
+    c = ['b']*10*extreme + ['r']*10*extreme
+    for i in range(0, extreme*10*2, 2): # extreme=3, palyers=10, x,y=2
+        x_i, y_i = g[:, i], g[:, i+1]
+        if sum(x_i) !=0 and sum(y_i) != 0:
+            for k in range(0, len(x_i)):
+                plt.plot(x_i[k], y_i[k], linestyle="None", marker="o", markersize=k/3, color=c[i])
+    plt.grid(True)
