@@ -93,33 +93,34 @@ def id_teams(event_dfs):
             result[id2] = name2
     return result
 
-
-# # get player tracking
-# def get_player_trajectory(moments, player_id):
-#     '''
-#         return x,y position of player and x,y,z of the ball
-#     '''
-#     # i[5][0][2:] is the balls x,y,z position
-#     return [j[2:4] + i[5][0][2:] for i in moments for j in i[5][1:] if j[1] == player_id]
-
-
-# def segment(X, length, overlap=None):
+# # chunk to sequences
+# def get_sequences(X, length, dim):
 #     ''' 
-#         segment a given list of moments to list of chunks each with size length 
-#         to do: try to implement overlap option
+#     segment a given list of moments to list of chunks each with size length.
+#     this is usually used before creating batches.
 #     '''
 #     n_segs = len(X)//length
-#     return [X[i*length:(i+1)*length] for i in range(0, n_segs)]
+#     return np.array([X[i*length:(i+1)*length] for i in range(0, n_segs)]).reshape(-1, length, dim)
 
-
-# chunk to sequences
-def get_sequences(X, length, dim):
-    ''' 
-    segment a given list of moments to list of chunks each with size length.
-    this is usually used before creating batches.
-    '''
-    n_segs = len(X)//length
-    return np.array([X[i*length:(i+1)*length] for i in range(0, n_segs)]).reshape(-1, length, dim)
+def get_sequences(single_game, sequence_length, overlap):
+    train = []
+    target = []
+    for i in single_game:
+        i_len = len(i)
+        if i_len < sequence_length:
+            sequences = np.pad(np.array(i), [(0, sequence_length-i_len), (0,0)], mode='constant')
+            targets = [np.roll(sequences[:, :2], -1, axis=0)[:-1, :]]
+            sequences = [sequences[:-1, :]]
+        else:
+            # https://stackoverflow.com/questions/48381870/a-better-way-to-split-a-sequence-in-chunks-with-overlaps
+            sequences = [np.array(i[-sequence_length:]) if j + sequence_length > i_len-1 else np.array(i[j:j+sequence_length]) \
+                for j in range(0, i_len-overlap, sequence_length-overlap)]
+            targets = [np.roll(k[:, :2], -1, axis=0)[:-1, :] for k in sequences] # drop the last row as the rolled-back is not real
+            sequences = [l[:-1, :] for l in sequences] # since target has dropped one then sequence also drop one
+        
+        train += sequences
+        target += targets
+    return train, target
 
 
 # chunk to batch
@@ -430,3 +431,108 @@ def subsample_sequence(moments, subsample_factor):#, random_state=42):
     # the final random index relative to the input
     rs_ind = np.array([rs[i] + interval_ind[i] for i in range(len(rs))])
     return seqs[rs_ind, :]
+
+
+def get_velocity(event, dim1, fs):
+    ''' 
+        event: an array where each row is a moment/frame, columns are the input feature vectors
+        dim1: the position dimensions before adding velocities 
+        fs: time lapse from frame to next frame
+
+        note: the last column is discarded because theres no velocity info for it
+    '''
+    pos = event[:, :dim1]
+    next_pos = np.copy(np.roll(pos,-1, axis=0)[:, :dim1])
+    vel = (next_pos - pos)/fs
+    return np.column_stack((event[:-1, :], vel[:-1, :]))
+
+
+
+# =============================================================================================
+# ROLE ALIGNMENT
+def process_moments_ra(moments, homeid, awayid, court_index, game_id):
+    # init one hot encoding
+    ohe = OneHotEncoding()
+    result = []
+    shot_clock = []
+    # half court = 94/2
+    half_court = 47.
+    n_balls_missing = 0
+    for i in range(len(moments)):
+        # get quarter number
+        quarter_number = moments[i][0]
+
+        # ball position array
+        dm = len(moments[i][5])
+        player_ind = -1
+        if dm == 11: # ball is present
+            ball = np.array([moments[i][5][0][2:]])
+            player_ind = 1
+        elif dm == 10 and moments[i][5][0][:2] != [-1,-1]: # ball is not present
+            # print('Ball is not present.')
+            n_balls_missing += 1
+            ball = np.array([[-1, -1, -1]])
+            player_ind = 0
+        else:
+            print('Warning!: There are less than 10 players! (skip)')
+            continue
+        # get player position data
+        pp = np.array(moments[i][5][player_ind:])
+        
+        # home (update: instead of using home/visitor, we will just follow court index)
+        # ignore last null column, team_id and player_id
+        hpp = pp[:5, 2:-1] # team1
+        # visitor
+        vpp = pp[5:, 2:-1] # team2
+        
+        # combine home and visit => update: in defend then offend order
+        game_id = int(game_id)
+        hv = []
+        if quarter_number <= 2: # first half
+            if court_index[game_id] == 0:
+                # all the left players on the left side,
+                # and the right court players also on the left side
+                if sum(hpp[:, 0]<=half_court)==5 and sum(vpp[:, 0]<=half_court)==5:
+                    hv = np.vstack((hpp,vpp))
+                else:
+                    continue
+            else:
+                # all the left players on the right side,
+                # and the right court players also on the right side
+                if sum(hpp[:, 0]>=half_court)==5 and sum(vpp[:, 0]>=half_court)==5:
+                    hv = np.vstack((vpp,hpp))
+                else:
+                    continue
+        elif quarter_number > 2: # second half the court position is switched
+            if court_index[game_id] == 0:
+                # all the left players on the left side,
+                # and the right court players also on the left side
+                if sum(hpp[:, 0]<=half_court)==5 and sum(vpp[:, 0]<=half_court)==5:
+                    # now the defend team is the team2, v
+                    hv = np.vstack((vpp,hpp))
+                else:
+                    continue
+            else:
+                # all the left players on the right side,
+                # and the right court players also on the right side
+                if sum(hpp[:, 0]>=half_court)==5 and sum(vpp[:, 0]>=half_court)==5:
+                    hv = np.vstack((hpp,vpp))
+                else:
+                    continue
+        if len(hv) == 0:
+            continue
+
+        # also record shot clocks for each of the moment/frame, this is used to
+        # seperate a sequence into different frames (since when shot clock resets,
+        # it usually implies a different state of game)
+        shot_clock.append(moments[i][3])
+
+        # just the player's position
+        result.append(hv)
+
+    # if n_balls_missing!=0: print('n_balls_missing:', n_balls_missing)
+    
+    if len(result) == 0:
+        return None
+    else:
+        return np.array(result), shot_clock
