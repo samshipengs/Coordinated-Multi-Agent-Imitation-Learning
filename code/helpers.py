@@ -298,6 +298,9 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
                 # all the left players on the right side,
                 # and the right court players also on the right side
                 if sum(hpp[:, 1]>=half_court)==5 and sum(vpp[:, 1]>=half_court)==5:
+                    # we also normalize the court i.e. move back to the left court (mirror reflect)
+                    v[:, 1] = 2*half_court - v[:, 1]
+                    h[:, 1] = 2*half_court - h[:, 1]
                     hv = np.vstack((v,h))
                 else:
                     continue
@@ -314,6 +317,8 @@ def process_moments(moments, homeid, awayid, id_role, role_order, court_index, g
                 # all the left players on the right side,
                 # and the right court players also on the right side
                 if sum(hpp[:, 1]>=half_court)==5 and sum(vpp[:, 1]>=half_court)==5:
+                    h[:, 1] = 2*half_court - h[:, 1]
+                    v[:, 1] = 2*half_court - v[:, 1]
                     hv = np.vstack((h,v))
                 else:
                     continue
@@ -509,6 +514,8 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
                 # all the left players on the right side,
                 # and the right court players also on the right side
                 if sum(hpp[:, 1]>=half_court)==5 and sum(vpp[:, 1]>=half_court)==5:
+                    vpp[:, 1] = 2*half_court - vpp[:, 1]
+                    hpp[:, 1] = 2*half_court - hpp[:, 1]
                     hv = np.vstack((vpp,hpp))
                 else:
                     continue
@@ -525,6 +532,8 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
                 # all the left players on the right side,
                 # and the right court players also on the right side
                 if sum(hpp[:, 1]>=half_court)==5 and sum(vpp[:, 1]>=half_court)==5:
+                    hpp[:, 1] = 2*half_court - hpp[:, 1]
+                    vpp[:, 1] = 2*half_court - vpp[:, 1]
                     hv = np.vstack((hpp,vpp))
                 else:
                     continue
@@ -537,7 +546,7 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
         shot_clock.append(moments[i][3])
 
         # just the player's position with player id
-        result.append(np.array(hv).reshape(-1))
+        result.append(np.array(hv)[:, 1:].reshape(-1))
 
         # resulti = list(np.array(resulti).reshape(-1)) + list(ball.reshape(-1)) + ohe_i
         # result.append(resulti)
