@@ -568,7 +568,6 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
     homeid = events.loc[0].home['teamid']
     awayid = events.loc[0].visitor['teamid']
     single_game = []
-    player_id = []
     # sc = 24. # init 24s shot clock
 
     # filter out seq length less than threshold, this has to be greater than 2
