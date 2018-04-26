@@ -455,17 +455,32 @@ def subsample_sequence(moments, subsample_factor, random_sample=False):#random_s
         return seqs[s_ind, :]
 
 
-def get_velocity(event, fs):
+def get_velocity(event, fs, mode=0):
     ''' 
         event: an array where each row is a moment/frame, columns are the input feature vectors
         fs: time lapse from frame to next frame
+
+        this one appends velocity to the end of all the players positions 
 
         note: the last column is discarded because theres no velocity info for it
     '''
     pos = event.copy()
     next_pos = np.copy(np.roll(pos,-1, axis=0))
     vel = (next_pos - pos)/fs
-    return vel[:-1, :]
+    if mode == 0:
+        return vel[:-1, :]
+    elif mode == 1:
+        pos = pos[:-1, :] # also drop the last one from postitions to match velocity
+        d1, d2 = pos.shape
+        combined = np.empty((d1, 2*d2))
+        # add the position and velocity data
+        start_ind = 0
+        for i in range(0, 2*d2, 4): # 2 for 2d (x,y), 2 for (vx, vy)
+            combined[:, i:i+2] = pos[:, start_ind:start_ind+2]
+            combined[:, i+2:i+4] = vel[:, start_ind:start_ind+2]
+            start_ind += 2
+        return combined
+            
 
 
 
@@ -738,7 +753,7 @@ class RoleAssignment:
         state_sequence = model.predict(X, lengths)
         # unstack s.t. each row contains sequence for each of the players
         state_sequence_ = state_sequence.reshape(5, -1).T
-        return state_sequence_, cmeans, covars
+        return state_sequence_, cmeans, covars, model
 
     def assign_roles(self, all_moments_, all_moments, cmeans, event_lengths):
         # compute the distance for each of the players (all_moments),
