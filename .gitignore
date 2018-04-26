@@ -19,3 +19,6 @@ checkpoint
 
 # tensorboard logs
 events.*
+
+# ipynbs
+*.ipynb
