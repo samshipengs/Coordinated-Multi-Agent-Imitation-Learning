@@ -470,6 +470,7 @@ def get_velocity(event, fs, mode=0):
     if mode == 0:
         return vel[:-1, :]
     elif mode == 1:
+        vel = vel[:-1, :]
         pos = pos[:-1, :] # also drop the last one from postitions to match velocity
         d1, d2 = pos.shape
         combined = np.empty((d1, 2*d2))
