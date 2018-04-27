@@ -174,14 +174,16 @@ def dynamic_raw_rnn(cell, input_, batch_size, seq_length, horizon, output_dim):
         emit_output = cell_output # == None for time == 0
         if cell_output is None:
             next_cell_state = cell.zero_state(batch_size, tf.float32)
+            #emit_output = tf.zeros([output_dim])
         else:
             next_cell_state = cell_state
+            #emit_output = cell_output
         
         elements_finished = (time >= seq_length)
         finished = tf.reduce_all(elements_finished)
 
         next_input = tf.cond(finished, 
-                             lambda: tf.zeros([batch_size, input_depth], dtype=tf.float32), 
+                             lambda: tf.zeros([batch_size, input_dim], dtype=tf.float32), 
                              lambda: inputs_ta.read(time))                     
         next_loop_state = None
 
