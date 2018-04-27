@@ -157,3 +157,38 @@ def rnn_horizon(cell, initial_state, input_, batch_size, seq_lengths, horizon, o
     final_state = last_state
 
     return outputs, final_state
+
+
+
+def dynamic_raw_rnn(cell, input_, batch_size, seq_length, horizon, output_dim):
+    # raw_rnn expects time major inputs as TensorArrays
+    inputs_ta = tf.TensorArray(dtype=tf.float32, size=seq_length)
+    inputs_ta = inputs_ta.unstack(_transpose_batch_time(input_))  # model_input is the input placeholder
+
+    input_dim = input_.get_shape()[-1].value  # the dimensionality of the input to each time step
+    output_dim = output_dim  # the dimensionality of the model's output at each time step
+
+    # def get_next_(t):
+
+    def loop_fn(time, cell_output, cell_state, loop_state):
+        emit_output = cell_output # == None for time == 0
+        if cell_output is None:
+            next_cell_state = cell.zero_state(batch_size, tf.float32)
+        else:
+            next_cell_state = cell_state
+        
+        elements_finished = (time >= seq_length)
+        finished = tf.reduce_all(elements_finished)
+
+        next_input = tf.cond(finished, 
+                             lambda: tf.zeros([batch_size, input_depth], dtype=tf.float32), 
+                             lambda: inputs_ta.read(time))                     
+        next_loop_state = None
+
+        return (elements_finished, next_input, next_cell_state, emit_output, next_loop_state)
+    
+    outputs_ta, last_state, _ = tf.nn.raw_rnn(cell, loop_fn)
+    outputs = _transpose_batch_time(outputs_ta.stack())
+    final_state = last_state
+
+    return outputs, final_state
