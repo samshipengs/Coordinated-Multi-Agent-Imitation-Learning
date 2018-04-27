@@ -22,7 +22,6 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import glob, os, sys, math, warnings
-warnings.filterwarnings('ignore')
 import matplotlib.pyplot as plt
 import copy, time, glob, os, sys
 os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
@@ -31,6 +30,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
 from helpers import *
 from utilities import *
 from model import rnn_horizon
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 logger.info('Done loading all libraries and modules')
 # ---------------------------------------------------------
 
@@ -46,7 +46,7 @@ logger.info('Load raw data')
 game_id = '0021500463'
 game_data = Data.load_game(game_id)
 events_df = pd.DataFrame(game_data['events'])
-logger.info('raw events shape:', events_df.shape)
+logger.info('raw events shape:{0:}'.format(events_df.shape))
 
 # Get some suplementary data =================================================
 logger.info('Get suplementary data e.g. court defend and offend, homeid etc')
@@ -66,7 +66,7 @@ logger.info('Pre-processing - filter events, subsample frames, add velocity, '
 use_event = [1, 2, 4, 6, 7]
 discard_event = [3, 5, 8, 9, 10, 12, 13, 18]
 events = filter_event_type(events_df, discard_event)
-logger.info('After filtering events has shape:', events.shape)
+logger.info('After filtering events has shape: {0:}'.format(events.shape))
 # break up sequences at 24secs shot clock point (or irregular case, e.g. out of bound maybe),
 # and obtain the game data
 # subsample_factor = 0
@@ -75,14 +75,12 @@ logger.info('After filtering events has shape:', events.shape)
 # print('Final number of events:', len(single_game))
 subsample_factor = 0
 single_game = get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample_factor=subsample_factor)
-logger.info('Final number of events:', len(single_game))
+logger.info('Final number of events: {0:}'.format(len(single_game)))
 
 # get velocity
-fs_base = 1./25 # 1/25 sec/frame   or  25 frames/sec
+fs_base = 1/25. # 1/25 sec/frame   or  25 frames/sec
 fs = fs_base * subsample_factor if subsample_factor != 0 else fs_base
-single_game_velocity = [get_velocity(i, fs) for i in single_game]
-# also drop the last row in positions due to the last row drop on velocity
-single_game = [i[:-1, :] for i in single_game]
+single_game = [get_velocity(i, 1/25, mode=1) for i in single_game]
 n_events = len(single_game)
 
 # Role assignment and reorder moment =================================================
@@ -90,24 +88,26 @@ logger.info('Role assignment and reorder moment')
 # first prepare data
 n_defend = 5
 n_offend = 5
+n_ind = 4
+
 # length for each moment
 event_lengths = np.array([len(i) for i in single_game])
 # repeat the event_lengths 5 times in order to match the unstack later on with moments
 event_lengths_repeat = np.concatenate([event_lengths for _ in range(n_defend)], axis=0)
 # all the moments
 all_moments = np.concatenate(single_game, axis=0)
-all_moments_vel = np.concatenate(single_game_velocity, axis=0) # vel
+all_moments_vel = np.concatenate(single_game, axis=0) # vel
 # we only need the first 5 players x,y coordindates
 # defend
-all_defend_moments = all_moments[:, :2*n_defend]
+all_defend_moments = all_moments[:, :n_ind*n_defend]
 # all_defend_moments_vel = all_moments_vel[:, :2*n_defend]
 # offend
-all_offend_moments = all_moments[:, 2*n_offend:]
+all_offend_moments = all_moments[:, n_ind*n_offend:]
 # all_offend_moments_vel = all_moments_vel[:, 2*n_offend:]
 
 # flattened
-all_defend_moments_ = np.concatenate([all_defend_moments[:, i:i+2] for i in range(0, 2*n_defend, 2)], axis=0)
-all_offend_moments_ = np.concatenate([all_offend_moments[:, i:i+2] for i in range(0, 2*n_offend, 2)], axis=0)
+all_defend_moments_ = np.concatenate([all_defend_moments[:, i:i+n_ind] for i in range(0, n_ind*n_defend, n_ind)], axis=0)
+all_offend_moments_ = np.concatenate([all_offend_moments[:, i:i+n_ind] for i in range(0, n_ind*n_offend, n_ind)], axis=0)
 
 # all_defend_moments_vel_ = np.concatenate([all_defend_moments_vel[:, i:i+2] for i in range(0, 2*n_defend, 2)], axis=0)
 # all_offend_moments_vel_ = np.concatenate([all_offend_moments_vel[:, i:i+2] for i in range(0, 2*n_offend, 2)], axis=0)
@@ -119,22 +119,20 @@ n_mix = None
 RA = RoleAssignment()
 
 # train
-defend_state_sequence_, defend_means, defend_covs = RA.train_hmm(all_defend_moments_, event_lengths_repeat, n_comp, n_mix)
-offend_state_sequence_, offend_means, offend_covs= RA.train_hmm(all_offend_moments_, event_lengths_repeat, n_comp, n_mix)
+defend_state_sequence_, defend_means, defend_covs, _ = RA.train_hmm(all_defend_moments_, event_lengths_repeat, n_comp, n_mix)
+offend_state_sequence_, offend_means, offend_covs, _ = RA.train_hmm(all_offend_moments_, event_lengths_repeat, n_comp, n_mix)
 # get role orders
 _, defend_roles = RA.assign_roles(all_defend_moments_, all_defend_moments, defend_means, event_lengths)
 _, offend_roles = RA.assign_roles(all_offend_moments_, all_offend_moments, offend_means, event_lengths)
 
 # reorder defend pos and vel
-defend_pos = order_moment_ra([i[:, :10] for i in single_game], defend_roles)
-defend_vel = order_moment_ra([i[:, :10] for i in single_game_velocity], defend_roles)
+defend_pos_vel = order_moment_ra([i[:, :n_ind*5] for i in single_game], defend_roles)
 
 # reorder offend pos and vel
-offend_pos = order_moment_ra([i[:, 10:] for i in single_game], offend_roles)
-offend_vel = order_moment_ra([i[:, 10:] for i in single_game_velocity], offend_roles)
+offend_pos_vel = order_moment_ra([i[:, n_ind*5:] for i in single_game], offend_roles)
 
 # concate above to create the data for model training
-single_game = [np.concatenate([defend_pos[i], offend_pos[i], defend_vel[i], offend_vel[i]], axis=1) for i in range(n_events)]
+single_game = [np.concatenate([defend_pos_vel[i], offend_pos_vel[i]], axis=1) for i in range(n_events)]
 
 # Create label, train and test set =========================================================================
 logger.info('Create label, train and test set')

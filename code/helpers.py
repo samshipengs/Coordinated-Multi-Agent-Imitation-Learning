@@ -638,20 +638,23 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
     else:
         return single_game#, (n, n_short)
 
-def order_moment_ra(moments, role_assignments, components=7, n=5):
+def order_moment_ra(moments, role_assignments, components=7, n=5, n_ind=4):
     '''
         moments: list of momnets e.g. [(38, 20), (15, 20), ..., ()]
         role_assignments: list of assignments
         components: number of components 
+        n: numbner of players
+        n_ind: features for individual player
     '''
     # reorder moments based on HMM and la
     def unstack_role(role):
         '''map the given role to the 10 index i.e. 5 players times 2 x,y coordinates
         '''
-        repeats = np.repeat(role*2, [2]*n, axis=1).copy() # 2 for x,y coordinates
-        repeats[:, range(1, 2*n, 2)] += 1
+        repeats = np.repeat(role*n_ind, [n_ind]*n, axis=1).copy() # 2 for x,y coordinates
+        for i in range(n-2):
+            repeats[:, range(i+1, n_ind*n, n_ind)] += i+1
         return repeats
-
+    
 
     droles = [unstack_role(i) for i in role_assignments]
     # reorder the moments
@@ -659,7 +662,7 @@ def order_moment_ra(moments, role_assignments, components=7, n=5):
     for i in range(len(moments)):
         ro_i = []
         for j in range(len(moments[i])):
-            slots = np.zeros(2*components)
+            slots = np.zeros(n_ind*components)
             for k, v in enumerate(droles[i][j]):
                 slots[v] = moments[i][j][k]
             ro_i.append(slots)
