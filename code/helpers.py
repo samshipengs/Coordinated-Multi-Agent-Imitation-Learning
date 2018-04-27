@@ -491,6 +491,7 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
     result = []
     shot_clock = []
     player_id = []
+    ball_positions = []
     # half court = 94/2
     half_court = 47.
     n_balls_missing = 0
@@ -562,6 +563,9 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
         if len(hv) == 0:
             continue
 
+        # add the position of the ball
+        ball_positions.append(ball.reshape(-1))
+
         # also record shot clocks for each of the moment/frame, this is used to
         # seperate a sequence into different frames (since when shot clock resets,
         # it usually implies a different state of game)
@@ -576,7 +580,7 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
     if len(result) == 0:
         return None
     else:
-        return np.array(result), shot_clock
+        return np.array(result), shot_clock, np.array(ball_positions)
 
 
 
@@ -590,6 +594,7 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
     homeid = events.loc[0].home['teamid']
     awayid = events.loc[0].visitor['teamid']
     single_game = []
+    single_game_balls = []
     # sc = 24. # init 24s shot clock
 
     # filter out seq length less than threshold, this has to be greater than 2
@@ -603,12 +608,13 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
             continue
         else:
             s1 = 0 # index that divides the sequence, this usually happens for 24s shot clock
-            pm, scs = result_i
+            pm, scs, ball_pos = result_i
             for i in range(len(scs)-1):
                 # sometimes there are None shot clock value
                 if scs[i] != None and scs[i+1] == None:
                     if len(scs[s1:i+1]) >= len_th:
                         single_game.append(pm[s1:i+1])
+                        single_game_balls.append(ball_pos[s1:i+1])
                         n += 1
                     else:
                         n_short += 1
@@ -618,6 +624,7 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
                 elif scs[i+1] >= scs[i]:
                     if len(scs[s1:i+1]) >= len_th:
                         single_game.append(pm[s1:i+1])
+                        single_game_balls.append(ball_pos[s1:i+1])
                         n += 1
                     else:
                         n_short += 1
@@ -626,6 +633,7 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
             if s1 != len(scs)-2:
                 if len(scs[s1:]) >= len_th:
                     single_game.append(pm[s1:])
+                    single_game_balls.append(ball_pos[s1:])
                     n += 1
                 else:
                     n_short += 1
@@ -636,7 +644,7 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
         print('subsample enabled with subsample factor', subsample_factor)
         return [subsample_sequence(m, subsample_factor) for m in single_game]
     else:
-        return single_game#, (n, n_short)
+        return single_game, single_game_balls     #, (n, n_short)
 
 def order_moment_ra(moments, role_assignments, components=7, n=5, n_ind=4):
     '''
