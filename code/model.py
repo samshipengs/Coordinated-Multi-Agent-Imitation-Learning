@@ -38,3 +38,31 @@ def dynamic_raw_rnn(cell, input_, batch_size, seq_length, horizon, output_dim):
     final_state = last_state
 
     return outputs, final_state
+
+
+# https://bretahajek.com/2017/04/importing-multiple-tensorflow-models-graphs/
+class ImportGraph:
+    def __init__(self, policy_path, model_name='model', model_path='./models/'):
+        tf.reset_default_graph()
+        self.graph = tf.Graph()
+        self.sess = tf.Session(graph=self.graph)
+        with self.graph.as_default():
+            # reload the network
+            saver = tf.train.import_meta_graph(model_path + policy_path + model_name + '.meta')
+            # load the parameters
+            print(model_path+model_name)
+            saver.restore(self.sess, tf.train.latest_checkpoint(model_path + policy_path))
+
+            # now acess things that you want to run
+            self.X = self.graph.get_tensor_by_name('train_input:0')
+            self.Y = self.graph.get_tensor_by_name('train_label:0')
+            self.loss = self.graph.get_tensor_by_name('MSEloss/loss:0')
+            self.pred = self.graph.get_tensor_by_name('prediction:0')
+            self.seq_len = self.graph.get_tensor_by_name('sequence_length:0')
+            self.h = self.graph.get_tensor_by_name('horizon:0')
+
+
+    def run(self, train_x, train_y, seq_len, h):
+        return self.sess.run([self.pred, self.loss], 
+                              feed_dict={self.X: train_x, self.Y: train_y, 
+                                         self.seq_len: seq_len, self.h: h})
