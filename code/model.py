@@ -6,7 +6,7 @@ import os
 
 def dynamic_raw_rnn(cell, input_, batch_size, seq_length, horizon, output_dim, policy_number):
     # raw_rnn expects time major inputs as TensorArrays
-    inputs_ta = tf.TensorArray(dtype=tf.float32, size=seq_length)#, clear_after_read=False)
+    inputs_ta = tf.TensorArray(dtype=tf.float32, size=seq_length, clear_after_read=False)
     inputs_ta = inputs_ta.unstack(_transpose_batch_time(input_))  # model_input is the input placeholder
 
     input_dim = input_.get_shape()[-1].value  # the dimensionality of the input to each time step
