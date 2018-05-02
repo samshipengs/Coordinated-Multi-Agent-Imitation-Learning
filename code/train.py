@@ -16,7 +16,7 @@ def train_all_single_policies(batch_size, sequence_length, train_game, train_tar
         printn = 100    # how many epochs we print
         n_epoch = int(1e2)
         # look-ahead horizon
-        horizon = [0]
+        horizon = [0, 2]
         t_int = time.time()
         train_step = 0
         valid_step = 0
