@@ -101,13 +101,14 @@ def id_teams(event_dfs):
     return result
 
 
-def get_sequences(single_game, sequence_length, overlap):
+def get_sequences(single_game, policy, sequence_length, overlap, n_fts=4):
     ''' create events where each event is a list of sequences from
         single_game with required sequence_legnth and overlap
 
         single_game: A list of events
         sequence_length: the desired length of each event (a sequence of moments)
         overlap: how much overlap wanted for the sequence generation
+        n_fts: individual player features e.g. n_fts = 4 => (x,y,vx,vy)
     '''
     train = []
     target = []
@@ -115,13 +116,13 @@ def get_sequences(single_game, sequence_length, overlap):
         i_len = len(i)
         if i_len < sequence_length:
             sequences = np.pad(np.array(i), [(0, sequence_length-i_len), (0,0)], mode='constant')
-            targets = [np.roll(sequences[:, :2], -1, axis=0)[:-1, :]]
+            targets = [np.roll(sequences[:, policy*n_fts:policy*n_fts+2], -1, axis=0)[:-1, :]]
             sequences = [sequences[:-1, :]]
         else:
             # https://stackoverflow.com/questions/48381870/a-better-way-to-split-a-sequence-in-chunks-with-overlaps
             sequences = [np.array(i[-sequence_length:]) if j + sequence_length > i_len-1 else np.array(i[j:j+sequence_length]) \
                 for j in range(0, i_len-overlap, sequence_length-overlap)]
-            targets = [np.roll(k[:, :2], -1, axis=0)[:-1, :] for k in sequences] # drop the last row as the rolled-back is not real
+            targets = [np.roll(k[:, policy*n_fts:policy*n_fts+2], -1, axis=0)[:-1, :] for k in sequences] # drop the last row as the rolled-back is not real
             sequences = [l[:-1, :] for l in sequences] # since target has dropped one then sequence also drop one
         
         train += sequences

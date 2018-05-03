@@ -4,19 +4,27 @@ from utilities import *
 from model import *
 import time
 
-def train_all_single_policies(batch_size, sequence_length, train_game, train_target,
-                              test_game, test_target, models_path):
+def train_all_single_policies(single_game, batch_size, sequence_length, overlap, models_path):
     policies = range(7) # in total 7 different roles
     for policy in policies:
         print('Wroking on policy', policy)
+        # first get the right data
+        # pad short sequence and chunk long sequence with overlaps
+        train, target = get_sequences(single_game, policy, sequence_length, overlap)
+        # create train and test set
+        p = 0.8 # train percentage
+        divider = int(len(train)*p)
+        train_game, test_game = np.copy(train[:divider]), np.copy(train[divider:])
+        train_target, test_target = np.copy(target[:divider]), np.copy(target[divider:])
+
         # create model
         model = SinglePolicy(policy_number=policy, state_size=128, batch_size=batch_size, input_dim=62, output_dim=2,
-                            learning_rate=0.001, seq_len=sequence_length-1, l1_weight_reg=True)
+                            learning_rate=0.01, seq_len=sequence_length-1, l1_weight_reg=True)
         # starts training
         printn = 100    # how many epochs we print
-        n_epoch = int(2e3)
+        n_epoch = int(1e1)
         # look-ahead horizon
-        horizon = [0, 2, 4, 6]
+        horizon = [0, 2]
         t_int = time.time()
         train_step = 0
         valid_step = 0

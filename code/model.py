@@ -98,11 +98,11 @@ class SinglePolicy:
                 self.loss = tf.identity(tf.losses.mean_squared_error(self.Y, self.pred) + regularization_cost, name='loss')
             else:
                 # no weight loss
-                self.loss = tf.losses.mean_squared_error(self.Y, self.pred)
+                self.loss = tf.identity(tf.losses.mean_squared_error(self.Y, self.pred), name='loss')
 
-        with tf.name_scope('Adam'):
+        with tf.name_scope('Optimizer'):
             # optimzier
-            self.opt = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
+            self.opt = tf.train.AdamOptimizer(self.learning_rate, name='Adam').minimize(self.loss)
     
         # initialize variables
         init = tf.global_variables_initializer()
@@ -137,21 +137,6 @@ class SinglePolicy:
         self.saver.save(self.sess, save_path)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # https://bretahajek.com/2017/04/importing-multiple-tensorflow-models-graphs/
 class ImportGraph:
     def __init__(self, policy_path, model_name='model', model_path='./models/'):
@@ -169,12 +154,15 @@ class ImportGraph:
             self.X = self.graph.get_tensor_by_name('train_input:0')
             self.Y = self.graph.get_tensor_by_name('train_label:0')
             self.loss = self.graph.get_tensor_by_name('MSEloss/loss:0')
+            self.opt = self.graph.get_operation_by_name('Optimizer/Adam')
             self.pred = self.graph.get_tensor_by_name('prediction:0')
-            self.seq_len = self.graph.get_tensor_by_name('sequence_length:0')
+            # self.seq_len = self.graph.get_tensor_by_name('sequence_length:0')
             self.h = self.graph.get_tensor_by_name('horizon:0')
 
+    def forward_pass(self, input_x, h):
+        return self.sess.run([self.pred], 
+                             feed_dict={self.X: input_x, self.h: h})
 
-    def run(self, train_x, train_y, seq_len, h):
-        return self.sess.run([self.pred, self.loss], 
-                              feed_dict={self.X: train_x, self.Y: train_y, 
-                                         self.seq_len: seq_len, self.h: h})
+    def backward_pass(self, input_x, input_y, h):
+        return self.sess.run([self.pred, self.loss, self.opt], 
+                            feed_dict={self.X: input_x, self.Y: input_y, self.h: h})
