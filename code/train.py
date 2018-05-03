@@ -11,12 +11,12 @@ def train_all_single_policies(batch_size, sequence_length, train_game, train_tar
         print('Wroking on policy', policy)
         # create model
         model = SinglePolicy(policy_number=policy, state_size=128, batch_size=batch_size, input_dim=62, output_dim=2,
-                            learning_rate=0.01, seq_len=sequence_length-1)
+                            learning_rate=0.001, seq_len=sequence_length-1, l1_weight_reg=True)
         # starts training
         printn = 100    # how many epochs we print
-        n_epoch = int(1e2)
+        n_epoch = int(2e3)
         # look-ahead horizon
-        horizon = [0, 2]
+        horizon = [0, 2, 4, 6]
         t_int = time.time()
         train_step = 0
         valid_step = 0
