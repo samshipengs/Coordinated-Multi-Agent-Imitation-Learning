@@ -278,6 +278,7 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
     half_court = 47. # 94/2
     n_balls_missing = 0
     for i in range(len(moments)):
+        print(i, '='*10)
         # get quarter number
         quarter_number = moments[i][0]
 
@@ -290,9 +291,9 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
         elif dm == 10 and moments[i][5][0][:2] != [-1,-1]: # ball is not present
             print('Warning!: Ball is not present.')
             n_balls_missing += 1
-            ball = np.array([[-1, -1, -1]])
-            player_ind = 0
-            # continue
+            # ball = np.array([[-1, -1, -1]])
+            # player_ind = 0
+            continue
         else:
             print('Warning!: There are less than 10 players! (skip)')
             continue
@@ -425,7 +426,7 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
 
     if subsample_factor != 0: # do subsample
         print('subsample enabled with subsample factor', subsample_factor)
-        return [subsample_sequence(m, subsample_factor) for m in single_game]
+        return [subsample_sequence(m, subsample_factor) for m in single_game],[subsample_sequence(m, subsample_factor) for m in single_game_balls]
     else:
         return single_game, single_game_balls
 
