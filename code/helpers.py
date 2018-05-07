@@ -210,6 +210,9 @@ def filter_event_type(events_df, discard_event):
             return False
         else:
             return True
+            
+    # def filter_events_(x, use_event):
+
     
     events = events_df[events_df.playbyplay.apply(lambda x: filter_events_(x, discard_event))].copy()
     events.reset_index(drop=True, inplace=True)
@@ -275,8 +278,7 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
     shot_clock = []
     player_id = []
     ball_positions = []
-    # half court = 94/2
-    half_court = 47.
+    half_court = 47. # 94/2
     n_balls_missing = 0
     for i in range(len(moments)):
         # get quarter number

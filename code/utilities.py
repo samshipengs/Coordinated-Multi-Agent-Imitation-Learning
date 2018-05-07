@@ -310,7 +310,6 @@ class PlotGame:
         plt.title(temp)
 
         for kk in range(player.shape[0]): #create circle object and text object for each player
-
             #
             #kk = 1
             #
@@ -340,7 +339,6 @@ class PlotGame:
         plt.plot(team_1_xy_mean[:jj+1,0],team_1_xy_mean[:jj+1,1],'o',
                 color=color_dict[team_ids[0]][0],
                 alpha=0.2)
-
 
         team_2_xy = player[player[:,0] == team_ids[1]]
         team_2_xy = team_2_xy[:,[2,3]]
@@ -393,7 +391,7 @@ def make_video(images, outvid, fps=20):
     print("The output video is {}".format(outvid))
 
 
-def plot_check(single_game, plt_ind=0, extreme=3):
+def plot_check(single_game, plt_ind=0):
     '''  
         Use plot to check if the game (list of events where each event is a list of moments) data
         is correct or not
@@ -402,12 +400,30 @@ def plot_check(single_game, plt_ind=0, extreme=3):
     assert plt_ind < len(single_game), 'The plotting index is larger than the length of the game.'
     g = single_game[plt_ind]
     plt.figure(figsize=(5,7))
-    extreme = int(extreme)
+    plt_dim = 14*4 # 14 players componenet each with 4 (x,y,vx,vy)
     # create color scheme
-    c = ['b']*10*extreme + ['r']*10*extreme
-    for i in range(0, extreme*10*2, 2): # extreme=3, palyers=10, x,y=2
+    c = ['b']*14 + ['r']*14
+    for i in range(0, plt_dim, 4): # jump around each 4 
         x_i, y_i = g[:, i], g[:, i+1]
         if sum(x_i) !=0 and sum(y_i) != 0:
             for k in range(0, len(x_i)):
                 plt.plot(x_i[k], y_i[k], linestyle="None", marker="o", markersize=k/3, color=c[i])
+    plt.grid(True)
+
+
+def plot_check_pred(pred, target, batch_size=32):
+    check_ind = np.random.randint(0, batch_size)
+    print('rand checking index:', check_ind)
+
+    print(pred[check_ind].shape)
+    y_true = target[check_ind].reshape(-1,2)
+    y_pred = pred[check_ind].reshape(-1,2)
+
+    plt.figure(figsize=(15,8))
+    for k in range(0, len(y_pred)):
+        plt.plot(y_pred[:, 0][k], y_pred[:, 1][k], linestyle="None", marker="o", markersize=k, color='g')
+        plt.plot(y_true[:, 0][k], y_true[:, 1][k], linestyle="None", marker="o", markersize=k, color='b')
+
+    plt.plot(y_pred[:, 0], y_pred[:, 1],'g', y_true[:,0], y_true[:,1], 'b')
+    plt.title('prediction green | true trajectory blue')
     plt.grid(True)
