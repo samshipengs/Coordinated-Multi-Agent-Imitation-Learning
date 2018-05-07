@@ -196,27 +196,24 @@ class OneHotEncoding:
         return one_hot_targets
 
 
-def filter_event_type(events_df, discard_event):
-    '''
-        events_df: a single game events dataframe
-        discard_event: a list of integers of event types to be discarded
+# def filter_event_type(events_df, discard_event):
+#     '''
+#         events_df: a single game events dataframe
+#         discard_event: a list of integers of event types to be discarded
 
-        return: a event df with dicard_event filtered out
-    '''
-    def filter_events_(x, discard_event):
-        etype = x['EVENTMSGTYPE'].values
-        if len(set(etype).intersection(discard_event))!=0 or len(etype) ==0:
-            # if the event contains discard events or if the event type is an empty list
-            return False
-        else:
-            return True
+#         return: a event df with dicard_event filtered out
+#     '''
+#     def filter_events_(x, discard_event):
+#         etype = x['EVENTMSGTYPE'].values
+#         if len(set(etype).intersection(discard_event))!=0 or len(etype) ==0:
+#             # if the event contains discard events or if the event type is an empty list
+#             return False
+#         else:
+#             return True
             
-    # def filter_events_(x, use_event):
-
-    
-    events = events_df[events_df.playbyplay.apply(lambda x: filter_events_(x, discard_event))].copy()
-    events.reset_index(drop=True, inplace=True)
-    return events
+#     events = events_df[events_df.playbyplay.apply(lambda x: filter_events_(x, discard_event))].copy()
+#     events.reset_index(drop=True, inplace=True)
+#     return events
 
 def subsample_sequence(moments, subsample_factor, random_sample=False):#random_state=42):
     ''' 
@@ -291,10 +288,11 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
             ball = np.array([moments[i][5][0][2:]])
             player_ind = 1
         elif dm == 10 and moments[i][5][0][:2] != [-1,-1]: # ball is not present
-            # print('Ball is not present.')
+            print('Warning!: Ball is not present.')
             n_balls_missing += 1
             ball = np.array([[-1, -1, -1]])
             player_ind = 0
+            # continue
         else:
             print('Warning!: There are less than 10 players! (skip)')
             continue
@@ -429,7 +427,7 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
         print('subsample enabled with subsample factor', subsample_factor)
         return [subsample_sequence(m, subsample_factor) for m in single_game]
     else:
-        return single_game, single_game_balls     #, (n, n_short)
+        return single_game, single_game_balls
 
 def order_moment_ra(moments, role_assignments, components=7, n=5, n_ind=4):
     '''
