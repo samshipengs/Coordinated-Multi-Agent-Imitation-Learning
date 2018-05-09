@@ -385,7 +385,7 @@ def process_game_data(game_id, events_df, event_threshold, subsample_factor):
 
 
 
-def order_moment_ra(moments, role_assignments, components=7, n=5, n_ind=4):
+def order_moment_ra(moments, role_assignments, components=5, n=5, n_ind=4):
     '''
         moments: list of momnets e.g. [(38, 20), (15, 20), ..., ()]
         role_assignments: list of assignments

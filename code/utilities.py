@@ -400,14 +400,22 @@ def plot_check(single_game, plt_ind=0):
     assert plt_ind < len(single_game), 'The plotting index is larger than the length of the game.'
     g = single_game[plt_ind]
     plt.figure(figsize=(5,7))
-    plt_dim = 14*4 # 14 players componenet each with 4 (x,y,vx,vy)
+    plt_dim = 10*4 # 10 players componenet each with 4 (x,y,vx,vy)
     # create color scheme
-    c = ['b']*14*2 + ['r']*14*2
+    c = ['b']*10*2 + ['r']*10*2
     for i in range(0, plt_dim, 4): # jump around each 4 
         x_i, y_i = g[:, i], g[:, i+1]
         if sum(x_i) !=0 and sum(y_i) != 0:
             for k in range(len(x_i)):
-                plt.plot(x_i[k], y_i[k], linestyle="None", marker="o", markersize=k/3, color=c[i])
+                if x_i[k] == y_i[k] == 0:
+                    print('Encountering all zeros, this is not supposed to happen!!!')
+                    print(sum(x_i), sum(y_i))
+                    if c[i] == 'b':
+                        plt.plot(x_i[k], y_i[k], linestyle="None", marker="x", markersize=1, color=c[i])
+                    else:
+                        plt.plot(x_i[k], y_i[k], linestyle="None", marker="+", markersize=1, color=c[i])
+                else:
+                    plt.plot(x_i[k], y_i[k], linestyle="None", marker="o", markersize=k/len(g)*10, color=c[i])
     plt.grid(True)
 
 
