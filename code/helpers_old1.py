@@ -1,4 +1,3 @@
-import glob, os, sys, math, warnings, copy, time, glob
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance
@@ -8,6 +7,98 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import seaborn as sns
 from hmmlearn import hmm
+
+
+def id_player(event_df):
+    '''
+        Map player id to player name.
+    '''
+    # get all the player_id and player_name mapping
+    player_id_mapping = {}
+    for i in range(event_df.shape[0]):
+        home_players_i = event_df.iloc[i, :].home['players']
+        away_players_i = event_df.iloc[i, :].visitor['players']
+        for j in home_players_i:
+            if j['playerid'] not in player_id_mapping.keys():
+                player_id_mapping[j['playerid']] = j['firstname']+' '+j['lastname']
+            elif j['firstname']+' '+j['lastname'] != player_id_mapping[j['playerid']]:
+                print('Same id is being used for different players!')
+        for j in away_players_i:
+            if j['playerid'] not in player_id_mapping.keys():
+                player_id_mapping[j['playerid']] = j['firstname']+' '+j['lastname']
+            elif j['firstname']+' '+j['lastname'] != player_id_mapping[j['playerid']]:
+                print('Same id is being used for different players!')
+    return player_id_mapping
+
+
+def check_game_roles_duplicates(id_role_mapping):
+    '''
+        input a dictionary contains id_role mapping for a single game events,
+        check if there are role swaps.
+    '''
+    n_dup = 0
+    for i in id_role_mapping.values():
+        if len(i) > 1:
+            n_dup += 1
+    return n_dup 
+
+
+def id_position(event_df):
+    '''
+        Map player id to a list of positions (in most case it's just one position/role)
+    '''
+    # get position mapping
+    # get all the player_id and player_name mapping
+    position_id_mapping = {}
+    for i in range(event_df.shape[0]):
+        home_players_i = event_df.iloc[i, :].home['players']
+        away_players_i = event_df.iloc[i, :].visitor['players']
+        for j in home_players_i:
+            if j['playerid'] not in position_id_mapping.keys():
+                position_id_mapping[j['playerid']] = [j['position']]
+            else:
+                if j['position'] not in position_id_mapping[j['playerid']]:
+                    print('Same id is being used for different positions!')
+                    position_id_mapping[j['playerid']].append(j['position'])
+                
+        for j in away_players_i:
+            if j['playerid'] not in position_id_mapping.keys():
+                position_id_mapping[j['playerid']] = [j['position']]
+                # print(j['position'])
+            else:
+                if j['position'] not in position_id_mapping[j['playerid']]:
+                    print('Same id is being used for different positions!')
+                    position_id_mapping[j['playerid']].append(j['position'])
+    return position_id_mapping
+
+
+def id_teams(event_dfs):
+    '''
+        Map team id to team names
+    '''
+    def id_team_(event_df):
+        one_row = event_df.loc[0] 
+        home_id = one_row.home['teamid']
+        home_team = one_row.home['name'].lower()
+
+        away_id = one_row.visitor['teamid']
+        away_team = one_row.visitor['name'].lower()
+        return home_id, home_team, away_id, away_team
+    result = {}
+    for i in event_dfs:
+        id1, name1, id2, name2 = id_team_(i)
+        ks = result.keys()
+        if id1 in ks:
+            if result[id1] != name1:
+                raise ValueError('team id is duplicated!')
+        else:
+            result[id1] = name1
+        if id2 in ks:
+            if result[id2] != name2:
+                raise ValueError('team id is duplicated!')
+        else:
+            result[id2] = name2
+    return result
 
 
 def get_sequences(single_game, policy, sequence_length, overlap, n_fts=4):
@@ -105,6 +196,25 @@ class OneHotEncoding:
         return one_hot_targets
 
 
+# def filter_event_type(events_df, discard_event):
+#     '''
+#         events_df: a single game events dataframe
+#         discard_event: a list of integers of event types to be discarded
+
+#         return: a event df with dicard_event filtered out
+#     '''
+#     def filter_events_(x, discard_event):
+#         etype = x['EVENTMSGTYPE'].values
+#         if len(set(etype).intersection(discard_event))!=0 or len(etype) ==0:
+#             # if the event contains discard events or if the event type is an empty list
+#             return False
+#         else:
+#             return True
+            
+#     events = events_df[events_df.playbyplay.apply(lambda x: filter_events_(x, discard_event))].copy()
+#     events.reset_index(drop=True, inplace=True)
+#     return events
+
 def subsample_sequence(moments, subsample_factor, random_sample=False):#random_state=42):
     ''' 
         moments: a list of moment 
@@ -159,231 +269,166 @@ def get_velocity(event, fs, mode=0):
             
 
 # =============================================================================================
-def remove_non11(moments, event_length_th=25):
-    ''' Go through each moment, when encounters balls not present on court,
-        or less than 10 players, discard these moments and then chunk the following moments 
-        to as another event.
-        
-        Motivations: balls out of bound or throwing the ball at side line will
-            probably create a lot noise for the defend trajectory learning model.
-            We could add the case where players are less than 10 (it could happen),
-            but this is not allowed in the model and it requres certain input dimension.
-        
-        moments: A list of moments
-        event_length_th: The minimum length of an event
-        
-        segments: A list of events (or, list of moments) e.g. [ms1, ms2] where msi = [m1, m2]
-    '''
-    
-    segments = []
-    segment = []
-    # looping through each moment
+# ROLE ALIGNMENT
+def process_moments_ra(moments, homeid, awayid, court_index, game_id):
+    result = []
+    shot_clock = []
+    player_id = []
+    ball_positions = []
+    half_court = 47. # 94/2
+    n_balls_missing = 0
     for i in range(len(moments)):
-        # get moment dimension
-        moment_dim = len(moments[i][5])
-        # 1 bball + 10 players
-        if moment_dim == 11:
-            segment.append(moments[i])
-        # less than ten players or basketball is not on the court
+        print(i, '='*10)
+        # get quarter number
+        quarter_number = moments[i][0]
+
+        # ball position array
+        dm = len(moments[i][5])
+        player_ind = -1
+        if dm == 11: # ball is present
+            ball = np.array([moments[i][5][0][2:]])
+            player_ind = 1
+        elif dm == 10 and moments[i][5][0][:2] != [-1,-1]: # ball is not present
+            print('Warning!: Ball is not present.')
+            n_balls_missing += 1
+            # ball = np.array([[-1, -1, -1]])
+            # player_ind = 0
+            continue
         else:
-            # only grab these satisfy the length threshold
-            if len(segment) >= event_length_th:
-                segments.append(segment)
-            # reset the segment to empty list
-            segment = []
-    # grab the last one
-    if len(segment) != 0:
-        segments.append(segment)
-    
-    return segments
-
-
-def chunk_shotclock(moments, event_length_th=25, verbose=False):
-    ''' When encounters ~24secs or game stops, chunk the moment to another event.
-        shot clock test:
-        1) c = [20.1, 20, 19, None,18, 12, 9, 7, 23.59, 23.59, 24, 12, 10, None, None, 10]
-          result = [[20.1, 20, 19], [18, 12, 9, 7], [23.59], [23.59], [24, 12, 10]]
-        2) c = [20.1, 20, 19, None, None,18, 12, 9, 7, 7, 7, 23.59, 23.59, 24, 12, 10, None, None, 10]
-          result = [[20.1, 20, 19], [18, 12, 9, 7], [7], [7], [23.59], [23.59], [24, 12, 10]]
-       
-        Motivations: game flow would make sharp change when there's 24s or 
-        something happened on the court s.t. the shot clock is stopped, thus discard
-        these special moments and remake the following valid moments to be next event.
-
-        moments: A list of moments
-        event_length_th: The minimum length of an event
-        verbose: print out exceptions or not
+            print('Warning!: There are less than 10 players! (skip)')
+            continue
+        # get player position data
+        pp = np.array(moments[i][5][player_ind:])
         
-        segments: A list of events (or, list of moments) e.g. [ms1, ms2] where msi = [m1, m2] 
-    '''
-    
-    segments = []
-    segment = []
-    # naturally we won't get the last moment, but it should be okay
-    for i in range(len(moments)-1):
-        current_shot_clock_i = moments[i][3]
-        next_shot_clock_i = moments[i+1][3]
-        # sometimes the shot clock value is None, thus cannot compare
-        try:
-            # if the game is still going i.e. sc is decreasing
-            if next_shot_clock_i < current_shot_clock_i:
-                segment.append(moments[i])
-            # for any reason the game is sstopped or reset
+        # home (update: instead of using home/visitor, we will just follow court index)
+        # ignore last null column, team_id
+        hpp = pp[:5, 1:-1] # team1
+        # visitor
+        vpp = pp[5:, 1:-1] # team2
+        
+        # combine home and visit => update: in defend then offend order
+        game_id = int(game_id)
+        hv = []
+        if quarter_number <= 2: # first half
+            if court_index[game_id] == 0:
+                # all the left players on the left side,
+                # and the right court players also on the left side
+                if sum(hpp[:, 1]<=half_court)==5 and sum(vpp[:, 1]<=half_court)==5:
+                    hv = np.vstack((hpp,vpp))
+                else:
+                    continue
             else:
-                # not forget the last moment before game reset or stopped
-                if current_shot_clock_i < 24.:
-                    segment.append(moments[i])
-                # add length condition
-                if len(segment) >= event_length_th:
-                    segments.append(segment)
-                # reset the segment to empty list
-                segment = []
-        # None value
-        except Exception as e:
-            if verbose: print(e)
-            # not forget the last valid moment before None value
-            if current_shot_clock_i != None:
-                segment.append(moments[i])    
-            if len(segment) >= event_length_th:
-                segments.append(segment)
-            # reset the segment to empty list
-            segment = []
-                
-    # grab the last one
-    if len(segment) != 0:
-        segments.append(segment)            
+                # all the left players on the right side,
+                # and the right court players also on the right side
+                if sum(hpp[:, 1]>=half_court)==5 and sum(vpp[:, 1]>=half_court)==5:
+                    vpp[:, 1] = 2*half_court - vpp[:, 1]
+                    hpp[:, 1] = 2*half_court - hpp[:, 1]
+                    hv = np.vstack((vpp,hpp))
+                else:
+                    continue
+        elif quarter_number > 2: # second half the court position is switched
+            if court_index[game_id] == 0:
+                # all the left players on the left side,
+                # and the right court players also on the left side
+                if sum(hpp[:, 1]<=half_court)==5 and sum(vpp[:, 1]<=half_court)==5:
+                    # now the defend team is the team2, v
+                    hv = np.vstack((vpp,hpp))
+                else:
+                    continue
+            else:
+                # all the left players on the right side,
+                # and the right court players also on the right side
+                if sum(hpp[:, 1]>=half_court)==5 and sum(vpp[:, 1]>=half_court)==5:
+                    hpp[:, 1] = 2*half_court - hpp[:, 1]
+                    vpp[:, 1] = 2*half_court - vpp[:, 1]
+                    hv = np.vstack((hpp,vpp))
+                else:
+                    continue
+        if len(hv) == 0:
+            continue
+
+        # add the position of the ball
+        ball_positions.append(ball.reshape(-1))
+
+        # also record shot clocks for each of the moment/frame, this is used to
+        # seperate a sequence into different frames (since when shot clock resets,
+        # it usually implies a different state of game)
+        shot_clock.append(moments[i][3])
+
+        # just the player's position with player id
+        result.append(np.array(hv)[:, 1:].reshape(-1))
+
+        # resulti = list(np.array(resulti).reshape(-1)) + list(ball.reshape(-1)) + ohe_i
+        # result.append(resulti)
     
-    return segments
+    if len(result) == 0:
+        return None
+    else:
+        return np.array(result), shot_clock, np.array(ball_positions)
 
 
-def chunk_halfcourt(moments, event_length_th=25):
-    ''' Discard any plays that are not single sided. When the play switches 
-        court withhin one event, we chunk it to be as another event
-        
+
+def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample_factor=3):
     '''
-    
-    # NBA court size 94 by 50 feet
-    half_court = 94/2. # feet
-    cleaned = []
-
-    # remove any moments where two teams are not playing at either side of the court
-    for i in moments:
-        # the x coordinates is on the 3rd or 2 ind of the matrix,
-        # the first and second is team_id and player_id
-        team1x = np.array(i[5])[1:6, :][:, 2]    # player data starts from 1, 0 ind is bball
-        team2x = np.array(i[5])[6:, :][:, 2]
-        # if both team are on the left court:
-        if sum(team1x <= half_court)==5 and sum(team2x <= half_court)==5:
-            cleaned.append(i)
-        elif sum(team1x >= half_court)==5 and sum(team2x >= half_court)==5:
-            cleaned.append(i)
-
-    # if teamns playing court changed during same list of moments,
-    # chunk it to another event
-    segments = []
-    segment = []
-    for i in range(len(cleaned)-1):
-        current_mean = np.mean(np.array(cleaned[i][5])[:, 2], axis=0)
-        current_pos = 'R' if current_mean >= half_court else 'L'
-        next_mean = np.mean(np.array(cleaned[i+1][5])[:, 2], axis=0)
-        next_pos = 'R' if next_mean >= half_court else 'L'
-
-        # the next moment both team are still on same side as current
-        if next_pos == current_pos:
-            segment.append(cleaned[i])
-        else:
-            if len(segment) >= event_length_th:
-                segments.append(segment)
-            segment = []
-    # grab the last one
-    if len(segment) != 0:
-        segments.append(segment)   
-
-    return segments
-
-
-def reorder_teams(input_moments, game_id):
-    ''' 1) the matrix always lays as home top and away bot VERIFIED
-        2) the court index indicate which side the top team (home team) defends VERIFIED
+        events: a single game's events dataframe
         
-        Reorder the team position s.t. the defending team is always the first 
-        
-        input_moments: A list moments
-        game_id: str of the game id
+        return: a list of events, each event consists a sequence of moments 
     '''
-    # now we want to reorder the team position based on meta data
-    court_index = pd.read_csv('./meta_data/court_index.csv')
-    court_index = dict(zip(court_index.game_id, court_index.court_position))
-    
-    half_court = 94/2. # feet
-    home_defense = court_index[int(game_id)]
-    moments = copy.deepcopy(input_moments)
-    for i in range(len(moments)):
-        home_moment_x = np.array(moments[i][5])[1:6,2]
-        away_moment_x = np.array(moments[i][5])[6:11,2]
-        quarter = moments[i][0]
-        # if the home team's basket is on the left
-        if home_defense == 0:
-            # first half game
-            if quarter <= 2:
-                # if the home team is over half court, this means they are doing offense
-                # and the away team is defending, so switch the away team to top
-                if sum(home_moment_x>=half_court) and sum(away_moment_x>=half_court):
-                    moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
-            # second half game      
-            if quarter > 2: # second half game, 3,4 quarter
-                # now the home actually gets switch to the other court
-                if sum(home_moment_x<=half_court) and sum(away_moment_x<=half_court):
-                    moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
-        # if the home team's basket is on the right
-        elif home_defense == 1:
-            # first half game
-            if quarter <= 2:
-                # if the home team is over half court, this means they are doing offense
-                # and the away team is defending, so switch the away team to top
-                if sum(home_moment_x<=half_court) and sum(away_moment_x<=half_court):
-                    moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
-            # second half game      
-            if quarter > 2: # second half game, 3,4 quarter
-                # now the home actually gets switch to the other court
-                if sum(home_moment_x>=half_court) and sum(away_moment_x>=half_court):
-                    moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
-    return moments
-
-
-def process_game_data(game_id, events_df, event_threshold, subsample_factor):
+    # 
+    homeid = events.loc[0].home['teamid']
+    awayid = events.loc[0].visitor['teamid']
     single_game = []
-    for i in events_df.moments.values:
-        single_game += remove_non11(i, event_length_th=event_threshold)
+    single_game_balls = []
+    # sc = 24. # init 24s shot clock
 
-    single_game1 = []
-    for i in single_game:
-        single_game1 += chunk_shotclock(i, event_length_th=event_threshold)
-
-    single_game2 = []
-    for i in single_game1:
-        single_game2 += chunk_halfcourt(i, event_length_th=event_threshold)
-
-    single_game3 = [reorder_teams(i, game_id) for i in single_game2]
-    single_game_ = []
-    single_bball_ = []
-    for i in single_game3:
-        event_i = []
-        ball_i = []
-        for j in i:
-            # player xy positions
-            event_i.append(np.array(j[5])[1:11, 2:4].reshape(-1))
-            ball_i.append(j[5][0][2:])
-        single_game_.append(np.array(event_i))
-        single_bball_.append(np.array(ball_i))
+    # filter out seq length less than threshold, this has to be greater than 2
+    # otherwise, there might be duplicates appearing
+    len_th = event_threshold    # the number of moments in a single event need to satisfy
+    n = 0    # record number that satisfies the threshold
+    n_short = 0    # number that doesnt match
+    for k, v in enumerate(events.moments.values):
+        result_i = process_moments_ra(v, homeid, awayid, court_index, game_id)
+        if result_i == None:
+            continue
+        else:
+            s1 = 0 # index that divides the sequence, this usually happens for 24s shot clock
+            pm, scs, ball_pos = result_i
+            for i in range(len(scs)-1):
+                # sometimes there are None shot clock value
+                if scs[i] != None and scs[i+1] == None:
+                    if len(scs[s1:i+1]) >= len_th:
+                        single_game.append(pm[s1:i+1])
+                        single_game_balls.append(ball_pos[s1:i+1])
+                        n += 1
+                    else:
+                        n_short += 1
+                    s1 = i+1
+                elif scs[i] == None:
+                    s1 += 1
+                elif scs[i+1] >= scs[i]:
+                    if len(scs[s1:i+1]) >= len_th:
+                        single_game.append(pm[s1:i+1])
+                        single_game_balls.append(ball_pos[s1:i+1])
+                        n += 1
+                    else:
+                        n_short += 1
+                    s1 = i+1
+            # grab the end piece
+            if s1 != len(scs)-2:
+                if len(scs[s1:]) >= len_th:
+                    single_game.append(pm[s1:])
+                    single_game_balls.append(ball_pos[s1:])
+                    n += 1
+                else:
+                    n_short += 1
+    # dimensions extreme<3> x n_players<10> x (player_pos<2> + teamid_onehot<25> + ball<3>) = 900
+    # dimensions = extreme<3> x n_players<10> x player_pos<2> + teamid_onehot<4> + ball<3> = 67
 
     if subsample_factor != 0: # do subsample
         print('subsample enabled with subsample factor', subsample_factor)
-        return [subsample_sequence(m, subsample_factor) for m in single_game_],[subsample_sequence(m, subsample_factor) for m in single_bball_]
+        return [subsample_sequence(m, subsample_factor) for m in single_game],[subsample_sequence(m, subsample_factor) for m in single_game_balls]
     else:
-        return single_game_, single_bball_
-
-
+        return single_game, single_game_balls
 
 def order_moment_ra(moments, role_assignments, components=7, n=5, n_ind=4):
     '''

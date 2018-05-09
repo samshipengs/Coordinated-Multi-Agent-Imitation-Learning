@@ -5,7 +5,8 @@ from model import *
 import time
 
 def train_all_single_policies(single_game, batch_size, sequence_length, overlap, models_path):
-    policies = range(7) # in total 7 different roles
+    # policies = range(7) # in total 7 different roles
+    policies = [0]  # CHANGE
     for policy in policies:
         print('Wroking on policy', policy)
         # first get the right data
@@ -16,16 +17,17 @@ def train_all_single_policies(single_game, batch_size, sequence_length, overlap,
         divider = int(len(train)*p)
         train_game, test_game = np.copy(train[:divider]), np.copy(train[divider:])
         train_target, test_target = np.copy(target[:divider]), np.copy(target[divider:])
+        print('train len:', len(train_game), 'test shape:', len(test_game))
 
         # create model
         model = SinglePolicy(policy_number=policy, state_size=128, batch_size=batch_size, input_dim=62, output_dim=2,
-                            learning_rate=0.001, seq_len=sequence_length-1, l1_weight_reg=True)
+                            learning_rate=0.01, seq_len=sequence_length-1, l1_weight_reg=True)
         # starts training
         printn = 100    # how many epochs we print
-        n_epoch = int(1e3)
+        n_epoch = int(2e2)    # CHANGE
         # look-ahead horizon
-        horizon = [0, 2, 4, 6]
-        t_int = time.time()
+        horizon = [0]       # CHANGE
+        t_int = time.time() 
         train_step = 0
         valid_step = 0
         for k in horizon:

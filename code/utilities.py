@@ -402,11 +402,11 @@ def plot_check(single_game, plt_ind=0):
     plt.figure(figsize=(5,7))
     plt_dim = 14*4 # 14 players componenet each with 4 (x,y,vx,vy)
     # create color scheme
-    c = ['b']*14 + ['r']*14
+    c = ['b']*14*2 + ['r']*14*2
     for i in range(0, plt_dim, 4): # jump around each 4 
         x_i, y_i = g[:, i], g[:, i+1]
         if sum(x_i) !=0 and sum(y_i) != 0:
-            for k in range(0, len(x_i)):
+            for k in range(len(x_i)):
                 plt.plot(x_i[k], y_i[k], linestyle="None", marker="o", markersize=k/3, color=c[i])
     plt.grid(True)
 
@@ -427,3 +427,96 @@ def plot_check_pred(pred, target, batch_size=32):
     plt.plot(y_pred[:, 0], y_pred[:, 1],'g', y_true[:,0], y_true[:,1], 'b')
     plt.title('prediction green | true trajectory blue')
     plt.grid(True)
+
+
+# id and str conversion helpers
+def id_player(event_df):
+    '''
+        Map player id to player name.
+    '''
+    # get all the player_id and player_name mapping
+    player_id_mapping = {}
+    for i in range(event_df.shape[0]):
+        home_players_i = event_df.iloc[i, :].home['players']
+        away_players_i = event_df.iloc[i, :].visitor['players']
+        for j in home_players_i:
+            if j['playerid'] not in player_id_mapping.keys():
+                player_id_mapping[j['playerid']] = j['firstname']+' '+j['lastname']
+            elif j['firstname']+' '+j['lastname'] != player_id_mapping[j['playerid']]:
+                print('Same id is being used for different players!')
+        for j in away_players_i:
+            if j['playerid'] not in player_id_mapping.keys():
+                player_id_mapping[j['playerid']] = j['firstname']+' '+j['lastname']
+            elif j['firstname']+' '+j['lastname'] != player_id_mapping[j['playerid']]:
+                print('Same id is being used for different players!')
+    return player_id_mapping
+
+
+def check_game_roles_duplicates(id_role_mapping):
+    '''
+        input a dictionary contains id_role mapping for a single game events,
+        check if there are role swaps.
+    '''
+    n_dup = 0
+    for i in id_role_mapping.values():
+        if len(i) > 1:
+            n_dup += 1
+    return n_dup 
+
+
+def id_position(event_df):
+    '''
+        Map player id to a list of positions (in most case it's just one position/role)
+    '''
+    # get position mapping
+    # get all the player_id and player_name mapping
+    position_id_mapping = {}
+    for i in range(event_df.shape[0]):
+        home_players_i = event_df.iloc[i, :].home['players']
+        away_players_i = event_df.iloc[i, :].visitor['players']
+        for j in home_players_i:
+            if j['playerid'] not in position_id_mapping.keys():
+                position_id_mapping[j['playerid']] = [j['position']]
+            else:
+                if j['position'] not in position_id_mapping[j['playerid']]:
+                    print('Same id is being used for different positions!')
+                    position_id_mapping[j['playerid']].append(j['position'])
+                
+        for j in away_players_i:
+            if j['playerid'] not in position_id_mapping.keys():
+                position_id_mapping[j['playerid']] = [j['position']]
+                # print(j['position'])
+            else:
+                if j['position'] not in position_id_mapping[j['playerid']]:
+                    print('Same id is being used for different positions!')
+                    position_id_mapping[j['playerid']].append(j['position'])
+    return position_id_mapping
+
+
+def id_teams(event_dfs):
+    '''
+        Map team id to team names
+    '''
+    def id_team_(event_df):
+        one_row = event_df.loc[0] 
+        home_id = one_row.home['teamid']
+        home_team = one_row.home['name'].lower()
+
+        away_id = one_row.visitor['teamid']
+        away_team = one_row.visitor['name'].lower()
+        return home_id, home_team, away_id, away_team
+    result = {}
+    for i in event_dfs:
+        id1, name1, id2, name2 = id_team_(i)
+        ks = result.keys()
+        if id1 in ks:
+            if result[id1] != name1:
+                raise ValueError('team id is duplicated!')
+        else:
+            result[id1] = name1
+        if id2 in ks:
+            if result[id2] != name2:
+                raise ValueError('team id is duplicated!')
+        else:
+            result[id2] = name2
+    return result
