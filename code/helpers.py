@@ -96,9 +96,6 @@ class OneHotEncoding:
 
     def encode(self, teams):
         nb_classes = len(self.mapping)
-        # for i in teams:
-        #     print(int(i), i)
-
         targets = np.array([self.mapping[int(i)] for i in teams])
         one_hot_targets = np.eye(nb_classes)[targets]
         # print(one_hot_targets)
@@ -259,7 +256,6 @@ def chunk_shotclock(moments, event_length_th=25, verbose=False):
 def chunk_halfcourt(moments, event_length_th=25):
     ''' Discard any plays that are not single sided. When the play switches 
         court withhin one event, we chunk it to be as another event
-        
     '''
     
     # NBA court size 94 by 50 feet
@@ -315,7 +311,8 @@ def reorder_teams(input_moments, game_id):
     court_index = pd.read_csv('./meta_data/court_index.csv')
     court_index = dict(zip(court_index.game_id, court_index.court_position))
     
-    half_court = 94/2. # feet
+    full_court = 94.
+    half_court = full_court/2. # feet
     home_defense = court_index[int(game_id)]
     moments = copy.deepcopy(input_moments)
     for i in range(len(moments)):
@@ -330,6 +327,10 @@ def reorder_teams(input_moments, game_id):
                 # and the away team is defending, so switch the away team to top
                 if sum(home_moment_x>=half_court) and sum(away_moment_x>=half_court):
                     moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
+                    for l in moments[i][5][1:6]:
+                        l[2] = full_court - l[2]
+                    for l in moments[i][5][6:11]:
+                        l[2] = full_court - l[2]
             # second half game      
             if quarter > 2: # second half game, 3,4 quarter
                 # now the home actually gets switch to the other court
@@ -348,6 +349,10 @@ def reorder_teams(input_moments, game_id):
                 # now the home actually gets switch to the other court
                 if sum(home_moment_x>=half_court) and sum(away_moment_x>=half_court):
                     moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
+                    for l in moments[i][5][1:6]:
+                        l[2] = full_court - l[2]
+                    for l in moments[i][5][6:11]:
+                        l[2] = full_court - l[2]
     return moments
 
 
@@ -367,21 +372,31 @@ def process_game_data(game_id, events_df, event_threshold, subsample_factor):
     single_game3 = [reorder_teams(i, game_id) for i in single_game2]
     single_game_ = []
     single_bball_ = []
+    # one-hot encode the game ids
+    OHE = OneHotEncoding()
+    team_ohes = []    
     for i in single_game3:
         event_i = []
+        team_ids = [[k[0] for k in i[0][5][1:6]], [k[0] for k in i[0][5][6:11]]]
+        assert len(set(team_ids[0])) == 1 and len(set(team_ids[1])) ==1, 'orders are wrong'
+        team_id = [team_ids[0][0], team_ids[-1][0]]
         ball_i = []
         for j in i:
+            assert [j[5][1][0], j[5][-1][0]] == team_id, 'Should equal'
             # player xy positions
             event_i.append(np.array(j[5])[1:11, 2:4].reshape(-1))
             ball_i.append(j[5][0][2:])
         single_game_.append(np.array(event_i))
         single_bball_.append(np.array(ball_i))
+        team_ohes.append(OHE.encode(team_id).reshape(-1))
 
     if subsample_factor != 0: # do subsample
         print('subsample enabled with subsample factor', subsample_factor)
-        return [subsample_sequence(m, subsample_factor) for m in single_game_],[subsample_sequence(m, subsample_factor) for m in single_bball_]
+        return [subsample_sequence(m, subsample_factor) for m in single_game_],\
+               [subsample_sequence(m, subsample_factor) for m in single_bball_],\
+               team_ohes
     else:
-        return single_game_, single_bball_
+        return single_game_, single_bball_, team_ohes
 
 
 
