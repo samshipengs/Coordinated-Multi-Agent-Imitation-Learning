@@ -1,5 +1,6 @@
 # customized ftns 
-from helpers import *
+from preprocessing import *
+from features import *
 from utilities import *
 from model import *
 import time
@@ -21,10 +22,10 @@ def train_all_single_policies(single_game, batch_size, sequence_length, overlap,
 
         # create model
         model = SinglePolicy(policy_number=policy, state_size=128, batch_size=batch_size, input_dim=50, output_dim=2,
-                            learning_rate=0.0005, seq_len=sequence_length-1, l1_weight_reg=True)
+                            learning_rate=0.0001, seq_len=sequence_length-1, l1_weight_reg=True)
         # starts training
         printn = 100    # how many epochs we print
-        n_epoch = int(3e3)    # CHANGE
+        n_epoch = int(1e4)    # CHANGE
         # look-ahead horizon
         horizon = [0]       # CHANGE
         t_int = time.time() 
