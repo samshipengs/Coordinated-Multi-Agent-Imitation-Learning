@@ -9,13 +9,15 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import seaborn as sns
 from hmmlearn import hmm
-from features import *
+from features import OneHotEncoding, order_moment_ra, RoleAssignment
 
 # ================================================================================================
 # remove_non_eleven ==============================================================================
 # ================================================================================================
 def remove_non_eleven(events_df, event_length_th=25, verbose=False):
     df = events_df.copy()
+    home_id = df.loc[0]['home']['teamid']
+    away_id = df.loc[0]['visitor']['teamid']
     def remove_non_eleven_(moments, event_length_th=25, verbose=False):
         ''' Go through each moment, when encounters balls not present on court,
             or less than 10 players, discard these moments and then chunk the following moments 
@@ -60,7 +62,7 @@ def remove_non_eleven(events_df, event_length_th=25, verbose=False):
     # in case there's zero length event
     df = df[df['chunked_moments'].apply(lambda e: len(e)) != 0]
     df['chunked_moments'] = df['chunked_moments'].apply(lambda e: e[0])
-    return df['chunked_moments'].values
+    return df['chunked_moments'].values, {'home_id': home_id, 'away_id': away_id}
 
 
 # ================================================================================================
@@ -192,6 +194,82 @@ def chunk_halfcourt(events_df, event_length_th=25, verbose=False):
     return df['chunked_moments'].values
 
 
+# ================================================================================================
+# reorder_teams ==================================================================================
+# ================================================================================================
+def reorder_teams(events_df, game_id):
+    df = events_df.copy()
+    def reorder_teams_(input_moments, game_id):
+        ''' 1) the matrix always lays as home top and away bot VERIFIED
+            2) the court index indicate which side the top team (home team) defends VERIFIED
+
+            Reorder the team position s.t. the defending team is always the first 
+
+            input_moments: A list moments
+            game_id: str of the game id
+        '''
+        # now we want to reorder the team position based on meta data
+        court_index = pd.read_csv('../meta_data/court_index.csv')
+        court_index = dict(zip(court_index.game_id, court_index.court_position))
+
+        full_court = 94.
+        half_court = full_court/2. # feet
+        home_defense = court_index[int(game_id)]
+        moments = copy.deepcopy(input_moments)
+        for i in range(len(moments)):
+            home_moment_x = np.array(moments[i][5])[1:6,2]
+            away_moment_x = np.array(moments[i][5])[6:11,2]
+            quarter = moments[i][0]
+            # if the home team's basket is on the left
+            if home_defense == 0:
+                # first half game
+                if quarter <= 2:
+                    # if the home team is over half court, this means they are doing offense
+                    # and the away team is defending, so switch the away team to top
+                    if sum(home_moment_x>=half_court)==5 and sum(away_moment_x>=half_court)==5:
+                        moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
+                        for l in moments[i][5][1:6]:
+                            l[2] = full_court - l[2]
+                        for l in moments[i][5][6:11]:
+                            l[2] = full_court - l[2]
+                # second half game      
+                elif quarter > 2: # second half game, 3,4 quarter
+                    # now the home actually gets switch to the other court
+                    if sum(home_moment_x<=half_court)==5 and sum(away_moment_x<=half_court)==5:
+                        moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
+                    elif sum(home_moment_x>=half_court)==5 and sum(away_moment_x>=half_court)==5:
+                        for l in moments[i][5][1:6]:
+                            l[2] = full_court - l[2]
+                        for l in moments[i][5][6:11]:
+                            l[2] = full_court - l[2]
+                else:
+                    print('Should not be here, check quarter value')
+            # if the home team's basket is on the right
+            elif home_defense == 1:
+                # first half game
+                if quarter <= 2:
+                    # if the home team is over half court, this means they are doing offense
+                    # and the away team is defending, so switch the away team to top
+                    if sum(home_moment_x<=half_court)==5 and sum(away_moment_x<=half_court)==5:
+                        moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
+                    elif sum(home_moment_x>=half_court)==5 and sum(away_moment_x>=half_court)==5:
+                        for l in moments[i][5][1:6]:
+                            l[2] = full_court - l[2]
+                        for l in moments[i][5][6:11]:
+                            l[2] = full_court - l[2]
+                # second half game      
+                elif quarter > 2: # second half game, 3,4 quarter
+                    # now the home actually gets switch to the other court
+                    if sum(home_moment_x>=half_court)==5 and sum(away_moment_x>=half_court)==5:
+                        moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
+                        for l in moments[i][5][1:6]:
+                            l[2] = full_court - l[2]
+                        for l in moments[i][5][6:11]:
+                            l[2] = full_court - l[2]
+                else:
+                    print('Should not be here, check quarter value')
+        return moments
+    return [reorder_teams_(m, game_id) for m in df.moments.values]
 
 
 
@@ -202,9 +280,7 @@ def chunk_halfcourt(events_df, event_length_th=25, verbose=False):
 
 
 
-# BELOW NOT TESTED
-
-
+# BELOW NOT TESTED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
@@ -319,78 +395,7 @@ def subsample_sequence(moments, subsample_factor, random_sample=False):#random_s
         return seqs[s_ind, :]
 
 
-
-
-
-
-
-
-
-
-
-def reorder_teams(input_moments, game_id):
-    ''' 1) the matrix always lays as home top and away bot VERIFIED
-        2) the court index indicate which side the top team (home team) defends VERIFIED
-        
-        Reorder the team position s.t. the defending team is always the first 
-        
-        input_moments: A list moments
-        game_id: str of the game id
-    '''
-    # now we want to reorder the team position based on meta data
-    court_index = pd.read_csv('./meta_data/court_index.csv')
-    court_index = dict(zip(court_index.game_id, court_index.court_position))
-    
-    full_court = 94.
-    half_court = full_court/2. # feet
-    home_defense = court_index[int(game_id)]
-    moments = copy.deepcopy(input_moments)
-    for i in range(len(moments)):
-        home_moment_x = np.array(moments[i][5])[1:6,2]
-        away_moment_x = np.array(moments[i][5])[6:11,2]
-        quarter = moments[i][0]
-        # if the home team's basket is on the left
-        if home_defense == 0:
-            # first half game
-            if quarter <= 2:
-                # if the home team is over half court, this means they are doing offense
-                # and the away team is defending, so switch the away team to top
-                if sum(home_moment_x>=half_court) and sum(away_moment_x>=half_court):
-                    moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
-                    for l in moments[i][5][1:6]:
-                        l[2] = full_court - l[2]
-                    for l in moments[i][5][6:11]:
-                        l[2] = full_court - l[2]
-            # second half game      
-            if quarter > 2: # second half game, 3,4 quarter
-                # now the home actually gets switch to the other court
-                if sum(home_moment_x<=half_court) and sum(away_moment_x<=half_court):
-                    moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
-        # if the home team's basket is on the right
-        elif home_defense == 1:
-            # first half game
-            if quarter <= 2:
-                # if the home team is over half court, this means they are doing offense
-                # and the away team is defending, so switch the away team to top
-                if sum(home_moment_x<=half_court) and sum(away_moment_x<=half_court):
-                    moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
-            # second half game      
-            if quarter > 2: # second half game, 3,4 quarter
-                # now the home actually gets switch to the other court
-                if sum(home_moment_x>=half_court) and sum(away_moment_x>=half_court):
-                    moments[i][5][1:6], moments[i][5][6:11] = moments[i][5][6:11], moments[i][5][1:6]
-                    for l in moments[i][5][1:6]:
-                        l[2] = full_court - l[2]
-                    for l in moments[i][5][6:11]:
-                        l[2] = full_court - l[2]
-    return moments
-
-
 def process_game_data(game_id, events_df, event_threshold, subsample_factor):
-    # single_game = []
-    # for i in events_df.moments.values:
-    #     single_game += remove_non11(i, event_length_th=event_threshold)
-
     result = remove_non_eleven(events_df, event_threshold)
     df = pd.DataFrame({'moments': result})
 
@@ -398,17 +403,9 @@ def process_game_data(game_id, events_df, event_threshold, subsample_factor):
     df = pd.DataFrame({'moments': result})
 
     result = chunk_halfcourt(df, event_threshold)
-    # df = pd.DataFrame({'moments': result})
+    df = pd.DataFrame({'moments': result})
 
-    # single_game1 = []
-    # for i in single_game:
-    #     single_game1 += chunk_shotclock(i, event_length_th=event_threshold)
-
-    # single_game2 = []
-    # for i in single_game1:
-    #     single_game2 += chunk_halfcourt(i, event_length_th=event_threshold)
-
-    single_game3 = [reorder_teams(i, game_id) for i in result]
+    single_game3 = reorder_teams(df, game_id)
     single_game_ = []
     single_bball_ = []
     # one-hot encode the game ids
