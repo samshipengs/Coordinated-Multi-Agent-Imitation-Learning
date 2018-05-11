@@ -31,6 +31,19 @@ class OneHotEncoding:
         # print(one_hot_targets)
         return one_hot_targets
 
+
+# def flatten_moment():
+
+
+
+
+
+
+
+
+
+
+
 def get_velocity(event, fs, mode=0):
     ''' 
         event: an array where each row is a moment/frame, columns are the input feature vectors

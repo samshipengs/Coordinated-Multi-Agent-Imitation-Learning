@@ -209,7 +209,7 @@ def reorder_teams(events_df, game_id):
             game_id: str of the game id
         '''
         # now we want to reorder the team position based on meta data
-        court_index = pd.read_csv('../meta_data/court_index.csv')
+        court_index = pd.read_csv('./meta_data/court_index.csv')
         court_index = dict(zip(court_index.game_id, court_index.court_position))
 
         full_court = 94.
@@ -396,7 +396,7 @@ def subsample_sequence(moments, subsample_factor, random_sample=False):#random_s
 
 
 def process_game_data(game_id, events_df, event_threshold, subsample_factor):
-    result = remove_non_eleven(events_df, event_threshold)
+    result, _ = remove_non_eleven(events_df, event_threshold)
     df = pd.DataFrame({'moments': result})
 
     result = chunk_shotclock(df, event_threshold)
