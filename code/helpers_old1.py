@@ -101,13 +101,14 @@ def id_teams(event_dfs):
     return result
 
 
-def get_sequences(single_game, sequence_length, overlap):
+def get_sequences(single_game, policy, sequence_length, overlap, n_fts=4):
     ''' create events where each event is a list of sequences from
         single_game with required sequence_legnth and overlap
 
         single_game: A list of events
         sequence_length: the desired length of each event (a sequence of moments)
         overlap: how much overlap wanted for the sequence generation
+        n_fts: individual player features e.g. n_fts = 4 => (x,y,vx,vy)
     '''
     train = []
     target = []
@@ -115,13 +116,13 @@ def get_sequences(single_game, sequence_length, overlap):
         i_len = len(i)
         if i_len < sequence_length:
             sequences = np.pad(np.array(i), [(0, sequence_length-i_len), (0,0)], mode='constant')
-            targets = [np.roll(sequences[:, :2], -1, axis=0)[:-1, :]]
+            targets = [np.roll(sequences[:, policy*n_fts:policy*n_fts+2], -1, axis=0)[:-1, :]]
             sequences = [sequences[:-1, :]]
         else:
             # https://stackoverflow.com/questions/48381870/a-better-way-to-split-a-sequence-in-chunks-with-overlaps
             sequences = [np.array(i[-sequence_length:]) if j + sequence_length > i_len-1 else np.array(i[j:j+sequence_length]) \
                 for j in range(0, i_len-overlap, sequence_length-overlap)]
-            targets = [np.roll(k[:, :2], -1, axis=0)[:-1, :] for k in sequences] # drop the last row as the rolled-back is not real
+            targets = [np.roll(k[:, policy*n_fts:policy*n_fts+2], -1, axis=0)[:-1, :] for k in sequences] # drop the last row as the rolled-back is not real
             sequences = [l[:-1, :] for l in sequences] # since target has dropped one then sequence also drop one
         
         train += sequences
@@ -195,24 +196,24 @@ class OneHotEncoding:
         return one_hot_targets
 
 
-def filter_event_type(events_df, discard_event):
-    '''
-        events_df: a single game events dataframe
-        discard_event: a list of integers of event types to be discarded
+# def filter_event_type(events_df, discard_event):
+#     '''
+#         events_df: a single game events dataframe
+#         discard_event: a list of integers of event types to be discarded
 
-        return: a event df with dicard_event filtered out
-    '''
-    def filter_events_(x, discard_event):
-        etype = x['EVENTMSGTYPE'].values
-        if len(set(etype).intersection(discard_event))!=0 or len(etype) ==0:
-            # if the event contains discard events or if the event type is an empty list
-            return False
-        else:
-            return True
-    
-    events = events_df[events_df.playbyplay.apply(lambda x: filter_events_(x, discard_event))].copy()
-    events.reset_index(drop=True, inplace=True)
-    return events
+#         return: a event df with dicard_event filtered out
+#     '''
+#     def filter_events_(x, discard_event):
+#         etype = x['EVENTMSGTYPE'].values
+#         if len(set(etype).intersection(discard_event))!=0 or len(etype) ==0:
+#             # if the event contains discard events or if the event type is an empty list
+#             return False
+#         else:
+#             return True
+            
+#     events = events_df[events_df.playbyplay.apply(lambda x: filter_events_(x, discard_event))].copy()
+#     events.reset_index(drop=True, inplace=True)
+#     return events
 
 def subsample_sequence(moments, subsample_factor, random_sample=False):#random_state=42):
     ''' 
@@ -274,10 +275,10 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
     shot_clock = []
     player_id = []
     ball_positions = []
-    # half court = 94/2
-    half_court = 47.
+    half_court = 47. # 94/2
     n_balls_missing = 0
     for i in range(len(moments)):
+        print(i, '='*10)
         # get quarter number
         quarter_number = moments[i][0]
 
@@ -288,10 +289,11 @@ def process_moments_ra(moments, homeid, awayid, court_index, game_id):
             ball = np.array([moments[i][5][0][2:]])
             player_ind = 1
         elif dm == 10 and moments[i][5][0][:2] != [-1,-1]: # ball is not present
-            # print('Ball is not present.')
+            print('Warning!: Ball is not present.')
             n_balls_missing += 1
-            ball = np.array([[-1, -1, -1]])
-            player_ind = 0
+            # ball = np.array([[-1, -1, -1]])
+            # player_ind = 0
+            continue
         else:
             print('Warning!: There are less than 10 players! (skip)')
             continue
@@ -424,9 +426,9 @@ def get_game_data_ra(events, court_index, game_id, event_threshold=10, subsample
 
     if subsample_factor != 0: # do subsample
         print('subsample enabled with subsample factor', subsample_factor)
-        return [subsample_sequence(m, subsample_factor) for m in single_game]
+        return [subsample_sequence(m, subsample_factor) for m in single_game],[subsample_sequence(m, subsample_factor) for m in single_game_balls]
     else:
-        return single_game, single_game_balls     #, (n, n_short)
+        return single_game, single_game_balls
 
 def order_moment_ra(moments, role_assignments, components=7, n=5, n_ind=4):
     '''
