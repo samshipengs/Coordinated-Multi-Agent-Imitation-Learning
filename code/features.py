@@ -32,46 +32,6 @@ class OneHotEncoding:
         return one_hot_targets
 
 
-# def flatten_moment():
-
-
-
-
-
-
-
-
-
-
-
-def get_velocity(event, fs, mode=0):
-    ''' 
-        event: an array where each row is a moment/frame, columns are the input feature vectors
-        fs: time lapse from frame to next frame
-
-        this one appends velocity to the end of all the players positions 
-
-        note: the last column is discarded because theres no velocity info for it
-    '''
-    pos = event.copy()
-    next_pos = np.copy(np.roll(pos,-1, axis=0))
-    vel = (next_pos - pos)/fs
-    if mode == 0:
-        return vel[:-1, :]
-    elif mode == 1:
-        vel = vel[:-1, :]
-        pos = pos[:-1, :] # also drop the last one from postitions to match velocity
-        d1, d2 = pos.shape
-        combined = np.empty((d1, 2*d2))
-        # add the position and velocity data
-        start_ind = 0
-        for i in range(0, 2*d2, 4): # 2 for 2d (x,y), 2 for (vx, vy)
-            combined[:, i:i+2] = pos[:, start_ind:start_ind+2]
-            combined[:, i+2:i+4] = vel[:, start_ind:start_ind+2]
-            start_ind += 2
-        return combined
-
-
 def order_moment_ra(moments, role_assignments, components=5, n=5, n_ind=4):
     '''
         moments: list of momnets e.g. [(38, 20), (15, 20), ..., ()]
@@ -200,7 +160,7 @@ class RoleAssignment:
         ed = distance.cdist(all_moments_, cmeans, 'euclidean')
 
         n = len(ed)//5 # number of sequences
-        assert n == all_moments.shape[0]
+        assert n == all_moments.shape[0] 
 
         def assign_index_(cm):
             ''' Find the roles/index the players from 0 to 4 belongs to.
