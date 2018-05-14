@@ -211,7 +211,7 @@ def reorder_teams(events_df, game_id):
             game_id: str of the game id
         '''
         # now we want to reorder the team position based on meta data
-        court_index = pd.read_csv('./meta_data/court_index.csv')
+        court_index = pd.read_csv('../meta_data/court_index.csv')
         court_index = dict(zip(court_index.game_id, court_index.court_position))
 
         full_court = 94.
@@ -234,6 +234,8 @@ def reorder_teams(events_df, game_id):
                             l[2] = full_court - l[2]
                         for l in moments[i][5][6:11]:
                             l[2] = full_court - l[2]
+                        # also normalize the bball x location
+                        moments[i][5][0][2] = full_court - moments[i][5][0][2]
                 # second half game      
                 elif quarter > 2: # second half game, 3,4 quarter
                     # now the home actually gets switch to the other court
@@ -244,6 +246,7 @@ def reorder_teams(events_df, game_id):
                             l[2] = full_court - l[2]
                         for l in moments[i][5][6:11]:
                             l[2] = full_court - l[2]
+                        moments[i][5][0][2] = full_court - moments[i][5][0][2]
                 else:
                     print('Should not be here, check quarter value')
             # if the home team's basket is on the right
@@ -259,6 +262,7 @@ def reorder_teams(events_df, game_id):
                             l[2] = full_court - l[2]
                         for l in moments[i][5][6:11]:
                             l[2] = full_court - l[2]
+                        moments[i][5][0][2] = full_court - moments[i][5][0][2]
                 # second half game      
                 elif quarter > 2: # second half game, 3,4 quarter
                     # now the home actually gets switch to the other court
@@ -268,6 +272,7 @@ def reorder_teams(events_df, game_id):
                             l[2] = full_court - l[2]
                         for l in moments[i][5][6:11]:
                             l[2] = full_court - l[2]
+                        moments[i][5][0][2] = full_court - moments[i][5][0][2]
                 else:
                     print('Should not be here, check quarter value')
         return moments
