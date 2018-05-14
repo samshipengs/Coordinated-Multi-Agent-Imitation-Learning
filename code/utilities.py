@@ -400,10 +400,10 @@ def plot_check(single_game, plt_ind=0):
     assert plt_ind < len(single_game), 'The plotting index is larger than the length of the game.'
     g = single_game[plt_ind]
     plt.figure(figsize=(5,7))
-    plt_dim = 10*4 # 10 players componenet each with 4 (x,y,vx,vy)
+    plt_dim = 10*2 # 10 players componenet each with 4 (x,y,vx,vy)
     # create color scheme
-    c = ['b']*10*2 + ['r']*10*2
-    for i in range(0, plt_dim, 4): # jump around each 4 
+    c = ['b']*10 + ['r']*10
+    for i in range(0, plt_dim, 2): # jump around each 4 
         x_i, y_i = g[:, i], g[:, i+1]
         if sum(x_i) !=0 and sum(y_i) != 0:
             for k in range(len(x_i)):

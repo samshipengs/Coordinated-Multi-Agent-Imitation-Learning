@@ -9,7 +9,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import seaborn as sns
 from hmmlearn import hmm
-from features import OneHotEncoding, order_moment_ra, RoleAssignment
+from features import OneHotEncoding, flatten_moments, create_static_features, create_dynamic_features, HiddenStructureLearning
+
+
 
 # ================================================================================================
 # remove_non_eleven ==============================================================================
@@ -370,69 +372,87 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         yield inputs[excerpt], targets[excerpt]
 
 
-def subsample_sequence(moments, subsample_factor, random_sample=False):#random_state=42):
-    ''' 
-        moments: a list of moment 
-        subsample_factor: number of folds less than orginal
-        random_sample: if true then sample a random one from the window of subsample_factor size
-    '''
-    seqs = np.copy(moments)
-    moments_len = seqs.shape[0]
-    n_intervals = moments_len//subsample_factor # number of subsampling intervals
-    left = moments_len % subsample_factor # reminder
+def subsample_sequence(events, subsample_factor, random_sample=False):
+    if subsample_factor == 0:
+        return events
+    
+    def subsample_sequence_(moments, subsample_factor, random_sample=False):#random_state=42):
+        ''' 
+            moments: a list of moment 
+            subsample_factor: number of folds less than orginal
+            random_sample: if true then sample a random one from the window of subsample_factor size
+        '''
+        seqs = np.copy(moments)
+        moments_len = seqs.shape[0]
+        n_intervals = moments_len//subsample_factor # number of subsampling intervals
+        left = moments_len % subsample_factor # reminder
 
-    if random_sample:
-        if left != 0:
-            rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)] + [np.random.randint(0, left)]
+        if random_sample:
+            if left != 0:
+                rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)] + [np.random.randint(0, left)]
+            else:
+                rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)]
+            interval_ind = range(0, moments_len, subsample_factor)
+            # the final random index relative to the input
+            rs_ind = np.array([rs[i] + interval_ind[i] for i in range(len(rs))])
+            return seqs[rs_ind, :]
         else:
-            rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)]
-        interval_ind = range(0, moments_len, subsample_factor)
-        # the final random index relative to the input
-        rs_ind = np.array([rs[i] + interval_ind[i] for i in range(len(rs))])
-        return seqs[rs_ind, :]
-    else:
-        s_ind = np.arange(0, moments_len, subsample_factor)
-        return seqs[s_ind, :]
+            s_ind = np.arange(0, moments_len, subsample_factor)
+            return seqs[s_ind, :]
 
+    return [subsample_sequence_(ms, subsample_factor) for ms in events]
 
-def process_game_data(game_id, events_df, event_threshold, subsample_factor):
-    result, _ = remove_non_eleven(events_df, event_threshold)
-    df = pd.DataFrame({'moments': result})
+def process_game_data(Data, game_ids, event_threshold, subsample_factor):
+    def process_game_data_(game_id, events_df, event_threshold, subsample_factor):
+        # remove non elevens
+        print('removing non eleven')
+        result, _ = remove_non_eleven(events_df, event_threshold)
+        df = pd.DataFrame({'moments': result})
+        # chunk based on shot clock, Nones or stopped timer
+        print('chunk shotclock')
+        result = chunk_shotclock(df, event_threshold)
+        df = pd.DataFrame({'moments': result})
+        # chunk based on half court and normalize to all half court
+        print('chunk half court')
+        result = chunk_halfcourt(df, event_threshold)
+        df = pd.DataFrame({'moments': result})
+        # reorder team matrix s.t. the first five players are always defend side players
+        print('reordering team')
+        result = reorder_teams(df, game_id)
+        df = pd.DataFrame({'moments': result})
 
-    result = chunk_shotclock(df, event_threshold)
-    df = pd.DataFrame({'moments': result})
+        # features 
+        # flatten data
+        print('flatten moment')
+        result, team_ids = flatten_moments(df)
+        df = pd.DataFrame({'moments': result})  
+        # static features
+        print('add static features')
+        result = create_static_features(df)
+        df = pd.DataFrame({'moments': result})
+        # dynamic features
+        print('add velocities')
+        fs = 1/25.
+        result = create_dynamic_features(df, fs)
+        # one hot encoding
+        print('add one hot encoding')
+        OHE = OneHotEncoding()
+        result = OHE.add_ohs(result, team_ids)
+        df = pd.DataFrame({'moments': result})
+        return df
 
-    result = chunk_halfcourt(df, event_threshold)
-    df = pd.DataFrame({'moments': result})
+    game = []
+    for i in range(len(game_ids)):
+        print('working on game {0:} | {1:} out of total {2:} games'.format(game_ids[i], i, len(game_ids)), end='\r')
+        game_data = Data.load_game(game_ids[i])
+        events_df = pd.DataFrame(game_data['events'])
+        game.append(process_game_data_(game_ids[i], events_df, event_threshold, subsample_factor))
 
-    single_game3 = reorder_teams(df, game_id)
-    single_game_ = []
-    single_bball_ = []
-    # one-hot encode the game ids
-    OHE = OneHotEncoding()
-    team_ohes = []    
-    for i in single_game3:
-        event_i = []
-        team_ids = [[k[0] for k in i[0][5][1:6]], [k[0] for k in i[0][5][6:11]]]
-        assert len(set(team_ids[0])) == 1 and len(set(team_ids[1])) ==1, 'orders are wrong'
-        team_id = [team_ids[0][0], team_ids[-1][0]]
-        ball_i = []
-        for j in i:
-            assert [j[5][1][0], j[5][-1][0]] == team_id, 'Should equal'
-            # player xy positions
-            event_i.append(np.array(j[5])[1:11, 2:4].reshape(-1))
-            ball_i.append(j[5][0][2:])
-        single_game_.append(np.array(event_i))
-        single_bball_.append(np.array(ball_i))
-        team_ohes.append(OHE.encode(team_id).reshape(-1))
-
-    if subsample_factor != 0: # do subsample
-        print('subsample enabled with subsample factor', subsample_factor)
-        return [subsample_sequence(m, subsample_factor) for m in single_game_],\
-               [subsample_sequence(m, subsample_factor) for m in single_bball_],\
-               team_ohes
-    else:
-        return single_game_, single_bball_, team_ohes
-
-
-
+    df = pd.concat(game, axis=0)
+    # hidden role learning
+    print('learning hidden roles')
+    HSL = HiddenStructureLearning(df)
+    result = HSL.reorder_moment()
+    # subsample
+    result = subsample_sequence(result, subsample_factor)
+    return result
