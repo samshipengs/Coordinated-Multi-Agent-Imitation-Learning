@@ -9,9 +9,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import seaborn as sns
 from hmmlearn import hmm
-
-# NOT TESTED YET
-
+# TESTED 
+# ======
+# =================================================================
+# flatten_moments =================================================
+# =================================================================
 def flatten_moments(events_df):
     df = events_df.copy()
     def flatten_moment(moment):
@@ -37,7 +39,9 @@ def flatten_moments(events_df):
     
     return df['flattened'].values, df['team_ids'].values
  
-
+# =================================================================
+# create_static_features ==========================================
+# =================================================================
 def create_static_features(events_df):
     df = events_df.copy()
     def create_static_features_(moment):
@@ -50,15 +54,50 @@ def create_static_features(events_df):
         def disp_(pxy, target):
             # dispacement to bball
             disp = pxy.reshape(-1, 2) - np.tile(target, (10, 1))
+            assert disp.shape[0] == 10
             r = np.sqrt(disp[:,0]**2 + disp[:, 1]**2)               # r 
             cos_theta = disp[:, 0]/r                                # costheta
             sin_theta = disp[:, 1]/r                                # sintheta
             theta = np.arccos(cos_theta)                            # theta
+            assert sum(r>0) == 10
             return np.concatenate((r, cos_theta, sin_theta, theta))
+
         return np.concatenate((moment, disp_(player_xy, b_xy), disp_(player_xy, hoop_xy)))
     df['enriched'] = df.moments.apply(lambda ms: np.vstack([create_static_features_(m) for m in ms]))
     return df['enriched'].values
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# NOT TESTED YET
+# ===================================================================
+
 
 def create_dynamic_features(events_df, fs):
     df = events_df.copy()
