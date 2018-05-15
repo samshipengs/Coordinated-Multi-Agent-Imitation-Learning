@@ -43,7 +43,7 @@ class HiddenStructureLearning:
         features_ind = np.array(pxy_ind + polar_bball_ind + polar_hoop_ind + pvxy_ind)
         return player_features_ind, features_ind
     
-    def create_hmm_input_(self, player_inds):
+    def create_hmm_input(self, player_inds):
         event = self.df.moments.values
         # create X: array-like, shape (n_samples, n_features)
         X = np.concatenate([ms[:, self.find_features_ind(player)[1]] for player in player_inds for ms in event], axis=0)
@@ -53,15 +53,14 @@ class HiddenStructureLearning:
         # lengths = np.concatenate([[len(ms) for ms in event] for _ in range(len(player_inds))],
         #                          axis=0)
         assert len(event[0]) == lengths[0]
-        assert len(event[len(event)//2]) == lengths[len(lengths)//2]
+        assert len(event[len(event)//2]) == lengths[len(lengths)//len(player_inds)//2], '{}'.format([len(event[len(event)//2]), lengths[len(lengths)//2]])
         assert len(event[-1]) == lengths[-1]
         assert X.shape[1] == 12 # the number of features used to determine hidden roles
         return X, lengths
     
     def train_hmm_(self, player_inds, verbose=True, random_state=42):
-        from hmmlearn import hmm
         assert len(player_inds) == 5 # defend and offend players each are five
-        X, lengths = self.create_hmm_input_(player_inds=player_inds)
+        X, lengths = self.create_hmm_input(player_inds=player_inds)
         model = hmm.GaussianHMM(n_components=5, 
                                 covariance_type='diag', 
                                 n_iter=50, 
