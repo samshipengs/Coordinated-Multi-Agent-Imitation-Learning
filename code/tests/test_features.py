@@ -197,12 +197,40 @@ class TestFeatures(unittest.TestCase):
             self.assertEqual(len(static_result), len(dynamic_result))
             [check_dynamics(static_result[i], dynamic_result[i]) for i in range(len(static_result))]
 
+    # test_hidden_learning =====================================================================================
+    def test_ohe(self):
+        def check_ohe(moments):
+            one_hots = moments[:, 129:]
+            # each row should only be two 1s from the one hot encoding of two teams
+            self.assertEqual(sum(np.sum(one_hots, axis=1) == 2), len(moments))
+            # there should be two columns that contain 1s
+            self.assertEqual(sum(np.sum(one_hots, axis=0) != 0), 2)
 
+        event_length_th = 30
+        for k, e in enumerate(self.event_dfs):
+            result, _ = preprocessing.remove_non_eleven(e, event_length_th, verbose=True)
+            df = pd.DataFrame({'moments': result})
 
+            result = preprocessing.chunk_shotclock(e, event_length_th, verbose=False)
+            df = pd.DataFrame({'moments': result})
 
+            result = preprocessing.chunk_halfcourt(df, event_length_th, verbose=False)
+            df = pd.DataFrame({'moments': result})
 
+            result = preprocessing.reorder_teams(df, self.game_ids[k])
+            df = pd.DataFrame({'moments': result})
 
+            flattened, team_ids =  preprocessing.flatten_moments(df)
+            df = pd.DataFrame({'moments': flattened})
 
+            static_result = preprocessing.create_static_features(df)
+            df = pd.DataFrame({'moments': copy.deepcopy(static_result)})
+            fs = 1/25.
+            dynamic_result = preprocessing.create_dynamic_features(df, fs)
+
+            OHE = preprocessing.OneHotEncoding()
+            result = OHE.add_ohs(dynamic_result, team_ids)
+            [check_ohe(ms) for ms in result]
 
 
 if __name__ == '__main__':
