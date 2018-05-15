@@ -1,14 +1,14 @@
 import unittest
 import pandas as pd
 import numpy as np
-
+import copy
 import sys
 sys.path.append("..")
 import preprocessing 
 import utilities
 
 
-class TestPreProcessing(unittest.TestCase):
+class TestFeatures(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -27,6 +27,7 @@ class TestPreProcessing(unittest.TestCase):
     def tearDown(self):
         pass
 
+    # test_flatten =====================================================================================
     def test_flatten(self):
         half_court = 94/2.
         court_width = 50.
@@ -88,7 +89,7 @@ class TestPreProcessing(unittest.TestCase):
             # 2) check the values from the features 
             [check_features(j) for i in flattened for j in i]
 
-
+    # test_static_features =====================================================================================
     def test_static_features(self):
         # index related to polar displacement with bball
         r_ball_ind = list(range(26, 36))
@@ -160,10 +161,41 @@ class TestPreProcessing(unittest.TestCase):
             result = preprocessing.create_static_features(df)
             [check_static(i[j]) for i in result for j in range(i.shape[0])]
 
+    # test_dynamic_features =====================================================================================
+    def test_dynamic_features(self):
+        def check_dynamics(static_moments, dynamic_moments):
+            pxy = static_moments[:, :23]
+            next_pxy = copy.deepcopy(pxy[1:, :23])
+            fs = 1/25. # time difference between each frame
+            vel = ((next_pxy-pxy[:-1])/fs) # we have shifted the velocity to be v2=x2-x1
+            vel_list = vel.tolist()
+            dynamic_list = dynamic_moments[:, 106:129].tolist()
+            self.assertEqual(len(vel_list), len(dynamic_list))
+            [self.assertListEqual(vel_list[i], dynamic_list[i]) for i in range(len(vel_list))]
 
+        event_length_th = 30
+        for k, e in enumerate(self.event_dfs):
+            result, _ = preprocessing.remove_non_eleven(e, event_length_th, verbose=True)
+            df = pd.DataFrame({'moments': result})
 
+            result = preprocessing.chunk_shotclock(e, event_length_th, verbose=False)
+            df = pd.DataFrame({'moments': result})
 
+            result = preprocessing.chunk_halfcourt(df, event_length_th, verbose=False)
+            df = pd.DataFrame({'moments': result})
 
+            result = preprocessing.reorder_teams(df, self.game_ids[k])
+            df = pd.DataFrame({'moments': result})
+
+            flattened, _ =  preprocessing.flatten_moments(df)
+            df = pd.DataFrame({'moments': flattened})
+
+            static_result = preprocessing.create_static_features(df)
+            df = pd.DataFrame({'moments': copy.deepcopy(static_result)})
+            fs = 1/25.
+            dynamic_result = preprocessing.create_dynamic_features(df, fs)
+            self.assertEqual(len(static_result), len(dynamic_result))
+            [check_dynamics(static_result[i], dynamic_result[i]) for i in range(len(static_result))]
 
 
 

@@ -63,13 +63,29 @@ def create_static_features(events_df):
             return np.concatenate((r, cos_theta, sin_theta, theta))
 
         return np.concatenate((moment, disp_(player_xy, b_xy), disp_(player_xy, hoop_xy)))
+    # vertical stack s.t. now each event i.e. a list of moments becomes an array
+    # where each row is a frame (moment)
     df['enriched'] = df.moments.apply(lambda ms: np.vstack([create_static_features_(m) for m in ms]))
     return df['enriched'].values
-    
 
 
 
-
+# =================================================================
+# create_dynamic_features =========================================
+# =================================================================
+def create_dynamic_features(events_df, fs):
+    df = events_df.copy()
+    def create_dynamic_features_(moments, fs):
+        ''' moments: (moments length, n existing features)'''
+        pxy = moments[:, :23] # get the players x,y and basketball x,y,z coordinates
+        next_pxy = np.roll(pxy, -1, axis=0) # get next frame value
+        vel = ((next_pxy - pxy)/fs)[:-1, :] # the last velocity is not meaningful
+        # when we combine this back to the original features, we shift one done,
+        # i.e. [p1, p2, ..., pT] combine [_, p2-p1, ...., pT-pT_1]
+        # the reason why we shift is that we don't want to leak next position info
+        return np.column_stack([moments[1:, :], vel])
+    df['enriched'] = df.moments.apply(lambda ms: create_dynamic_features_(ms, fs))
+    return df['enriched'].values 
 
 
 
@@ -99,21 +115,6 @@ def create_static_features(events_df):
 # ===================================================================
 
 
-def create_dynamic_features(events_df, fs):
-    df = events_df.copy()
-    def create_dynamic_features_(moments, fs):
-        ''' moments: (moments length, n existing features)'''
-        pxy = moments[:, :23] # get the players x,y and basketball x,y,z coordinates
-        next_pxy = np.roll(pxy, -1, axis=0) # get next frame value
-        vel = ((next_pxy - pxy)/fs)[:-1, :] # the last velocity is not meaningful
-        # when we combine this back to the original features, we shift one done,
-        # i.e. [p1, p2, ..., pT] combine [_, p2-p1, ...., pT-pT_1]
-        # the reason why we shift is that we don't want to leak next position info
-        return np.column_stack([moments[1:, :], vel])
-    df['enriched'] = df.moments.apply(lambda ms: create_dynamic_features_(ms, fs))
-    return df['enriched'].values
-
-
 class HiddenStructureLearning:
     def __init__(self, events_df):
         self.df = events_df.copy()
@@ -127,10 +128,11 @@ class HiddenStructureLearning:
         qtr_ind = [23]
         time_left_ind = [24]
         sc_ind = [25]
-        polar_bball_ind = [26+player*4, 26+player*4+1, 26+player*4+2, 26+player*4+3]
-        polar_hoop_ind = [66+player*4, 66+player*4+1, 66+player*4+2, 66+player*4+3]
+        polar_bball_ind = [26+player, 26+player+10, 26+player+20, 26+player+30]
+        polar_hoop_ind = [66+player, 66+player+10, 66+player+20, 66+player+30]
         pvxy_ind = [106+player*2, 106+player*2+1]
         bball_vxy_ind = [126, 127, 128]
+
         player_features_ind = pxy_ind + polar_bball_ind + polar_hoop_ind + pvxy_ind
 #         features_ind = np.array(pxy_ind + bball_xy_ind + qtr_ind + time_left_ind + sc_ind + polar_bball_ind \
 #                      + polar_hoop_ind + pvxy_ind + bball_vxy_ind)
