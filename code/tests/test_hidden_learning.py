@@ -61,8 +61,8 @@ class TestHiddenLearning(unittest.TestCase):
     def tearDown(self):
         pass
 
-
-    def test_hidden(self):
+    # test_find_features_ind ==========================================================================
+    def test_find_features_ind(self):
         half_court = 94/2.
         court_width = 50.
         tol = 5.7
@@ -124,7 +124,25 @@ class TestHiddenLearning(unittest.TestCase):
                         msg = '\033[91m sin^2 + cos^2 =1 hoop: {}\033[00m'.format(ms[:, polar_hoop_ind[1]]**2 + ms[:, polar_hoop_ind[2]]**2))
 
 
-
+    # test_create_hmm_input
+    def test_create_hmm_input(self):
+        for k in range(len(self.game_ids)):
+            result = self.results[k]
+            HSL = self.hsls[k]
+            X, lengths = HSL.create_hmm_input(range(10))
+            self.assertEqual(len(X), sum(lengths))
+            X_test = []
+            lengths_test = []
+            for p in range(10):
+                x = []
+                l = []
+                for r in result:
+                    x.append(r[:, HSL.find_features_ind(p)[1]])
+                    l.append(len(r))
+                X_test += np.concatenate(x, axis=0).tolist()
+                lengths_test += l
+            self.assertListEqual(X_test, X)
+            self.assertListEqual(lengths_test, lengths)
 
 
 
