@@ -1,13 +1,29 @@
 # customized ftns 
-from preprocessing import *
-from model import *
-import time
+from sequencing import get_sequences, get_minibatches, iterate_minibatches, subsample_sequence
+import time, sys, logging
 
-def train_all_single_policies(single_game, batch_size, sequence_length, overlap, models_path):
+import numpy as np
+from model import SinglePolicy
+
+
+logging.basicConfig(format='%(asctime)s | %(levelname)s : %(message)s',
+                     level=logging.INFO, stream=sys.stdout)
+
+def train_all_single_policies(single_game, hyper_params, models_path):
+    batch_size = hyper_params['batch_size']
+    sequence_length = hyper_params['sequence_length']
+    overlap = hyper_params['overlap']
+    state_size = hyper_params['state_size']
+    input_dim = hyper_params['input_dim']
+    learning_rate = hyper_params['learning_rate']
+    n_epoch = hyper_params['n_epoch']
+
+    logging.info('Training with hyper parameters: {}'.format(hyper_params))
+
     # policies = range(7) # in total 7 different roles
     policies = [0]  # CHANGE
     for policy in policies:
-        print('Wroking on policy', policy)
+        logging.info('Wroking on policy {}'.format(policy))
         # first get the right data
         # pad short sequence and chunk long sequence with overlaps
         train, target = get_sequences(single_game, policy, sequence_length, overlap)
@@ -19,11 +35,11 @@ def train_all_single_policies(single_game, batch_size, sequence_length, overlap,
         print('train len:', len(train_game), 'test shape:', len(test_game))
 
         # create model
-        model = SinglePolicy(policy_number=policy, state_size=256, batch_size=batch_size, input_dim=179, output_dim=2,
-                            learning_rate=0.001, seq_len=sequence_length-1, l1_weight_reg=False)
+        model = SinglePolicy(policy_number=policy, state_size=state_size, batch_size=batch_size, 
+                             input_dim=input_dim, output_dim=2,
+                             learning_rate=learning_rate, seq_len=sequence_length-1, l1_weight_reg=False)
         # starts training
         printn = 100    # how many epochs we print
-        n_epoch = int(2e3)    # CHANGE
         # look-ahead horizon
         horizon = [0]       # CHANGE
         t_int = time.time() 

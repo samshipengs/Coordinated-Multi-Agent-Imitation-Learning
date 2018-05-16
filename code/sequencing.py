@@ -41,7 +41,7 @@ def get_sequences(single_game, policy, sequence_length, overlap, n_fts=4):
     return train, target
 
 
-def get_minibatches(inputs, targets, batchsize, shuffle=False):
+def get_minibatches(inputs, targets, batchsize, shuffle=True):
     '''
         inputs: A list of events where each event is a sequence (array) of moments
                 with sequence_length
@@ -67,7 +67,7 @@ def get_minibatches(inputs, targets, batchsize, shuffle=False):
     return np.array(batches), np.array(target_batches)
 
 
-def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
+def iterate_minibatches(inputs, targets, batchsize, shuffle=True):
     '''
         same as get_minibatches, except returns a generator
     '''

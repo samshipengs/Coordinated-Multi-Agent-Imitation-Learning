@@ -23,6 +23,9 @@ class HiddenStructureLearning:
         self.defend_players = list(range(5))
         self.offend_players = list(range(5, 10))
         
+    # =================================
+    # find_features_ind ===============
+    # =================================
     def find_features_ind(self, player):
         assert player < 10
         pxy_ind = [player*2, player*2+1]
@@ -43,6 +46,9 @@ class HiddenStructureLearning:
         features_ind = np.array(pxy_ind + polar_bball_ind + polar_hoop_ind + pvxy_ind)
         return player_features_ind, features_ind
     
+    # =================================
+    # create_hmm_input ================
+    # =================================
     def create_hmm_input(self, player_inds):
         event = self.df.moments.values
         # create X: array-like, shape (n_samples, n_features)
@@ -101,7 +107,8 @@ class HiddenStructureLearning:
         
         original = copy.deepcopy(self.df.moments.values)
         reordered = copy.deepcopy(self.df.moments.values)
-        def reorder_moment_(players, original, reordered, role_assignments, offset):# offset is to map the reordered index back to original range for offense players
+        # offset is to map the reordered index back to original range for offense players
+        def reorder_moment_(players, original, reordered, role_assignments, offset):
             divider = 0
             lengths = [len(m) for m in original]
             # iteratve through each moments length

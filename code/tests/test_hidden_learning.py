@@ -141,10 +141,11 @@ class TestHiddenLearning(unittest.TestCase):
                     l.append(len(r))
                 X_test += np.concatenate(x, axis=0).tolist()
                 lengths_test += l
-            self.assertListEqual(X_test, X)
+            self.assertListEqual(X_test, X.tolist())
             self.assertListEqual(lengths_test, lengths)
 
 
+    
 
 
 

@@ -100,7 +100,7 @@ class OneHotEncoding:
         from the id_team.csv file (or you an pass your own)
     '''
     def __init__(self, cat=None):
-        cat = pd.read_csv('../meta_data/id_team.csv')
+        cat = pd.read_csv('./meta_data/id_team.csv')
         # binary encode
         # ensure uniqueness
         assert sum(cat.team_id.duplicated()) == 0

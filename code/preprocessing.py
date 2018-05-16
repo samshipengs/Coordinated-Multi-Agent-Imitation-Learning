@@ -1,5 +1,5 @@
 # preprocessing.py
-import glob, os, sys, math, warnings, copy, time, glob
+import glob, os, sys, math, warnings, copy, time, glob, logging
 import numpy as np
 import pandas as pd
 
@@ -7,6 +7,8 @@ from features import OneHotEncoding, flatten_moments, create_static_features, cr
 from hidden_role_learning import HiddenStructureLearning
 from sequencing import get_sequences, get_minibatches, iterate_minibatches, subsample_sequence
 
+logging.basicConfig(format='%(asctime)s | %(levelname)s : %(message)s',
+                     level=logging.INFO, stream=sys.stdout)
 
 # ================================================================================================
 # remove_non_eleven ==============================================================================
@@ -42,7 +44,7 @@ def remove_non_eleven(events_df, event_length_th=25, verbose=False):
                 segment.append(moments[i])
             # less than ten players or basketball is not on the court
             else:
-    #             print('less than 11')
+    #             logging.debug('less than 11')
                 # only grab these satisfy the length threshold
                 if len(segment) >= event_length_th:
                     segments.append(segment)
@@ -52,7 +54,7 @@ def remove_non_eleven(events_df, event_length_th=25, verbose=False):
         if len(segment) >= event_length_th:
             segments.append(segment)
         if len(segments) == 0:
-            if verbose: print('Warning: Zero length event returned')
+            if verbose: logging.debug('Warning: Zero length event returned')
         return segments
     # process for each event (row)
     df['chunked_moments'] = df.moments.apply(lambda m: remove_non_eleven_(m, event_length_th, verbose))
@@ -109,7 +111,7 @@ def chunk_shotclock(events_df, event_length_th=25, verbose=False):
                     segment = []
             # None value
             except Exception as e:
-                if verbose: print(e)
+                if verbose: logging.debug(e)
                 # not forget the last valid moment before None value
                 if current_shot_clock_i != None:
                     segment.append(moments[i])    
@@ -122,7 +124,7 @@ def chunk_shotclock(events_df, event_length_th=25, verbose=False):
         if len(segment) >= event_length_th:
             segments.append(segment)            
         if len(segments) == 0:
-            if verbose: print('Warning: Zero length event returned')
+            if verbose: logging.debug('Warning: Zero length event returned')
         return segments
     
     # process for each event (row)
@@ -180,7 +182,7 @@ def chunk_halfcourt(events_df, event_length_th=25, verbose=False):
         if len(segment) >= event_length_th:
             segments.append(segment)            
         if len(segments) == 0:
-            if verbose: print('Warning: Zero length event returned')
+            if verbose: logging.debug('Warning: Zero length event returned')
         return segments
     
     # process for each event (row)
@@ -206,7 +208,7 @@ def reorder_teams(events_df, game_id):
             game_id: str of the game id
         '''
         # now we want to reorder the team position based on meta data
-        court_index = pd.read_csv('../meta_data/court_index.csv')
+        court_index = pd.read_csv('./meta_data/court_index.csv')
         court_index = dict(zip(court_index.game_id, court_index.court_position))
 
         full_court = 94.
@@ -243,7 +245,7 @@ def reorder_teams(events_df, game_id):
                             l[2] = full_court - l[2]
                         moments[i][5][0][2] = full_court - moments[i][5][0][2]
                 else:
-                    print('Should not be here, check quarter value')
+                    logging.debug('Should not be here, check quarter value')
             # if the home team's basket is on the right
             elif home_defense == 1:
                 # first half game
@@ -269,7 +271,7 @@ def reorder_teams(events_df, game_id):
                             l[2] = full_court - l[2]
                         moments[i][5][0][2] = full_court - moments[i][5][0][2]
                 else:
-                    print('Should not be here, check quarter value')
+                    logging.debug('Should not be here, check quarter value')
         return moments
     return [reorder_teams_(m, game_id) for m in df.moments.values]
 
@@ -287,37 +289,37 @@ def reorder_teams(events_df, game_id):
 def process_game_data(Data, game_ids, event_threshold, subsample_factor):
     def process_game_data_(game_id, events_df, event_threshold, subsample_factor):
         # remove non elevens
-        print('removing non eleven')
+        logging.debug('removing non eleven')
         result, _ = remove_non_eleven(events_df, event_threshold)
         df = pd.DataFrame({'moments': result})
         # chunk based on shot clock, Nones or stopped timer
-        print('chunk shotclock')
+        logging.debug('chunk shotclock')
         result = chunk_shotclock(df, event_threshold)
         df = pd.DataFrame({'moments': result})
         # chunk based on half court and normalize to all half court
-        print('chunk half court')
+        logging.debug('chunk half court')
         result = chunk_halfcourt(df, event_threshold)
         df = pd.DataFrame({'moments': result})
         # reorder team matrix s.t. the first five players are always defend side players
-        print('reordering team')
+        logging.debug('reordering team')
         result = reorder_teams(df, game_id)
         df = pd.DataFrame({'moments': result})
 
         # features 
         # flatten data
-        print('flatten moment')
+        logging.debug('flatten moment')
         result, team_ids = flatten_moments(df)
         df = pd.DataFrame({'moments': result})  
         # static features
-        print('add static features')
+        logging.debug('add static features')
         result = create_static_features(df)
         df = pd.DataFrame({'moments': result})
         # dynamic features
-        print('add velocities')
+        logging.debug('add velocities')
         fs = 1/25.
         result = create_dynamic_features(df, fs)
         # one hot encoding
-        print('add one hot encoding')
+        logging.debug('add one hot encoding')
         OHE = OneHotEncoding()
         result = OHE.add_ohs(result, team_ids)
         df = pd.DataFrame({'moments': result})
@@ -325,14 +327,14 @@ def process_game_data(Data, game_ids, event_threshold, subsample_factor):
 
     game = []
     for i in range(len(game_ids)):
-        print('working on game {0:} | {1:} out of total {2:} games'.format(game_ids[i], i, len(game_ids)), end='\r')
+        logging.info('working on game {0:} | {1:} out of total {2:} games'.format(game_ids[i], i, len(game_ids)))
         game_data = Data.load_game(game_ids[i])
         events_df = pd.DataFrame(game_data['events'])
         game.append(process_game_data_(game_ids[i], events_df, event_threshold, subsample_factor))
 
     df = pd.concat(game, axis=0)
     # hidden role learning
-    print('learning hidden roles')
+    logging.debug('learning hidden roles')
     HSL = HiddenStructureLearning(df)
     result = HSL.reorder_moment()
     # subsample
