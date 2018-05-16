@@ -32,7 +32,7 @@ def train_all_single_policies(single_game, hyper_params, models_path):
         divider = int(len(train)*p)
         train_game, test_game = np.copy(train[:divider]), np.copy(train[divider:])
         train_target, test_target = np.copy(target[:divider]), np.copy(target[divider:])
-        print('train len:', len(train_game), 'test shape:', len(test_game))
+        logging.info('train len: {} | test shape: {}'.format(len(train_game), len(test_game)))
 
         # create model
         model = SinglePolicy(policy_number=policy, state_size=state_size, batch_size=batch_size, 
@@ -46,7 +46,7 @@ def train_all_single_policies(single_game, hyper_params, models_path):
         train_step = 0
         valid_step = 0
         for k in horizon:
-            print('Horizon {0:} {1:}'.format(k, '='*10))
+            logging.info('Horizon {0:} {1:}'.format(k, '='*10))
 
             for epoch in range(n_epoch):
                 epoch_loss =0.
@@ -72,11 +72,11 @@ def train_all_single_policies(single_game, hyper_params, models_path):
                         model.valid_writer.add_summary(valid_sum, valid_step)
                         valid_loss += val_l/n_val_batch
                         valid_step += printn
-                    print('Epoch {0:<4d} | loss: {1:<8.2f} | time took: {2:<.2f}s '
+                    logging.info('Epoch {0:<4d} | loss: {1:<8.2f} | time took: {2:<.2f}s '
                         '| validation loss: {3:<8.2f}'.format(epoch, epoch_loss, (t2-t1), valid_loss))
                         
-            print('Total time took: {0:<.2f}hrs'.format((time.time()-t_int)/60/60))
+            logging.info('Total time took: {0:<.2f}hrs'.format((time.time()-t_int)/60/60))
 
         # save model
         model.save_model(models_path)
-        print('Done saving model for', policy, '\n')
+        logging.info('Done saving model for policy {}'.format(policy))

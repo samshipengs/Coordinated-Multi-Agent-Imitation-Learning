@@ -8,15 +8,8 @@ from scipy.stats import multivariate_normal
 from hmmlearn import hmm
 
 
-
-
-
-
-
 # NOT TESTED YET
 # ===================================================================
-
-
 class HiddenStructureLearning:
     def __init__(self, events_df):
         self.df = events_df.copy()
@@ -64,7 +57,7 @@ class HiddenStructureLearning:
         assert X.shape[1] == 12 # the number of features used to determine hidden roles
         return X, lengths
     
-    def train_hmm_(self, player_inds, verbose=True, random_state=42):
+    def train_hmm(self, player_inds, verbose=True, random_state=42):
         assert len(player_inds) == 5 # defend and offend players each are five
         X, lengths = self.create_hmm_input(player_inds=player_inds)
         model = hmm.GaussianHMM(n_components=5, 
@@ -84,7 +77,7 @@ class HiddenStructureLearning:
                 'cmeans': cmeans}
     
     def assign_roles(self, player_inds, mode='euclidean'):
-        result = self.train_hmm_(player_inds=player_inds)
+        result = self.train_hmm(player_inds=player_inds)
         if mode == 'euclidean':
             ed = distance.cdist(result['X'], result['cmeans'], 'euclidean')
         elif mode == 'cosine':
@@ -94,12 +87,12 @@ class HiddenStructureLearning:
         n = len(ed)//5 # number of sequences for each players
         assert len(ed) % 5 == 0 # it should be divisibe by number of players
         
-        def assign_ind_(cost):
-            row_ind, col_ind = linear_sum_assignment(cost)
-            return col_ind
-        
-        role_assignments = np.array([assign_ind_(ed[np.arange(5)*n + i]) for i in range(n)])
+        role_assignments = np.array([self.assign_ind(ed[np.arange(5)*n + i]) for i in range(n)])
         return role_assignments, result
+
+    def assign_ind(self, cost):
+        row_ind, col_ind = linear_sum_assignment(cost)
+        return col_ind
     
     def reorder_moment(self):
         defend_role_assignments, defend_result = self.assign_roles(player_inds=self.defend_players)

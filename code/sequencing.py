@@ -3,23 +3,52 @@ import glob, os, sys, math, warnings, copy, time, glob
 import numpy as np
 import pandas as pd
 
+# TESTED
+# ===============================================================================
+# subsample_sequence ============================================================
+# ===============================================================================
+def subsample_sequence(events, subsample_factor, random_sample=False):
+    if subsample_factor == 0:
+        return events
+    
+    def subsample_sequence_(moments, subsample_factor, random_sample=False):#random_state=42):
+        ''' 
+            moments: a list of moment 
+            subsample_factor: number of folds less than orginal
+            random_sample: if true then sample a random one from the window of subsample_factor size
+        '''
+        seqs = np.copy(moments)
+        moments_len = seqs.shape[0]
+        n_intervals = moments_len//subsample_factor # number of subsampling intervals
+        left = moments_len % subsample_factor # reminder
 
+        if random_sample:
+            if left != 0:
+                rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)] + [np.random.randint(0, left)]
+            else:
+                rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)]
+            interval_ind = range(0, moments_len, subsample_factor)
+            # the final random index relative to the input
+            rs_ind = np.array([rs[i] + interval_ind[i] for i in range(len(rs))])
+            return seqs[rs_ind, :]
+        else:
+            s_ind = np.arange(0, moments_len, subsample_factor)
+            return seqs[s_ind, :]
 
-
+    return [subsample_sequence_(ms, subsample_factor) for ms in events]
 
 
 
 # BELOW NOT TESTED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-def get_sequences(single_game, policy, sequence_length, overlap, n_fts=4):
+# =================================================================================================
+def get_sequences(single_game, policy, sequence_length, overlap, n_fts=2):
     ''' create events where each event is a list of sequences from
         single_game with required sequence_legnth and overlap
 
         single_game: A list of events
         sequence_length: the desired length of each event (a sequence of moments)
         overlap: how much overlap wanted for the sequence generation
-        n_fts: individual player features e.g. n_fts = 4 => (x,y,vx,vy)
+        n_fts: individual player features e.g. n_fts = 2 => (x,y)
     '''
     train = []
     target = []
@@ -67,7 +96,7 @@ def get_minibatches(inputs, targets, batchsize, shuffle=True):
     return np.array(batches), np.array(target_batches)
 
 
-def iterate_minibatches(inputs, targets, batchsize, shuffle=True):
+def iterate_minibatches(inputs, targets, batchsize, seq_len, shuffle=True):
     '''
         same as get_minibatches, except returns a generator
     '''
@@ -80,35 +109,10 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=True):
             excerpt = indices[start_idx:start_idx + batchsize]
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        yield inputs[excerpt], targets[excerpt]
-
-
-def subsample_sequence(events, subsample_factor, random_sample=False):
-    if subsample_factor == 0:
-        return events
-    
-    def subsample_sequence_(moments, subsample_factor, random_sample=False):#random_state=42):
-        ''' 
-            moments: a list of moment 
-            subsample_factor: number of folds less than orginal
-            random_sample: if true then sample a random one from the window of subsample_factor size
-        '''
-        seqs = np.copy(moments)
-        moments_len = seqs.shape[0]
-        n_intervals = moments_len//subsample_factor # number of subsampling intervals
-        left = moments_len % subsample_factor # reminder
-
-        if random_sample:
-            if left != 0:
-                rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)] + [np.random.randint(0, left)]
-            else:
-                rs = [np.random.randint(0, subsample_factor) for _ in range(n_intervals)]
-            interval_ind = range(0, moments_len, subsample_factor)
-            # the final random index relative to the input
-            rs_ind = np.array([rs[i] + interval_ind[i] for i in range(len(rs))])
-            return seqs[rs_ind, :]
+        x, y = inputs[excerpt], targets[excerpt]
+        if x.shape[1] > seq_len:
+            yield None
         else:
-            s_ind = np.arange(0, moments_len, subsample_factor)
-            return seqs[s_ind, :]
+            yield x, y
 
-    return [subsample_sequence_(ms, subsample_factor) for ms in events]
+
