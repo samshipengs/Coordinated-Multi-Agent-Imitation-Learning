@@ -87,11 +87,14 @@ class TestPreProcessing(unittest.TestCase):
                 train_game, _ = np.copy(test_train[:divider]), np.copy(test_train[divider:])
                 train_target, _ = np.copy(test_target[:divider]), np.copy(test_target[divider:])
                 # print(train_game, '\n\n', train_target)
-                for batch in iterate_minibatches(train_game, train_target, batch_size, test_sequence_length, shuffle=False):
+                for batch in iterate_minibatches(train_game, train_target, batch_size, test_sequence_length, shuffle=True):
                     if batch != None:
                         train_xi, train_yi = batch
-                        self.assertEqual(train_xi.shape[0], batch_size, msg='train_xi.shape: {}'.format(train_xi.shape))
-                        self.assertEqual(train_xi.shape[1], n_features, msg='train_xi.shape: {}'.format(train_xi.shape))
+                        self.assertEqual(train_xi.shape[0], batch_size, 
+                                         msg='train_xi.shape: {0:} | train_yi.shape: {1:} | seq_len: {2:} | overlap: {3:}'.format(train_xi.shape, train_yi.shape, test_sequence_length, test_overlap))
+                        self.assertEqual(train_xi.shape[1], test_sequence_length-1,
+                                         msg='train_xi.shape: {0:} | train_yi.shape: {1:} | seq_len: {2:} | overlap: {3:}'.format(train_xi.shape, train_yi.shape, test_sequence_length, test_overlap))
+                        self.assertEqual(train_xi.shape[2], n_features)
                         self.assertListEqual(train_yi[0][0].tolist(), train_xi[0][1][:2].tolist())
                         self.assertListEqual(train_yi[-1][0].tolist(), train_xi[-1][1][:2].tolist())
 

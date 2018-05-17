@@ -53,7 +53,7 @@ def train_all_single_policies(single_game, hyper_params, models_path):
                 # number of train batches
                 n_train_batch = len(train_game)//batch_size
                 t1 = time.time()
-                for batch in iterate_minibatches(train_game, train_target, batch_size, shuffle=False):
+                for batch in iterate_minibatches(train_game, train_target, batch_size, shuffle=True):
                     train_xi, train_yi = batch
                     p, l, _, train_sum = model.train(train_xi, train_yi, k)
                     model.train_writer.add_summary(train_sum, train_step)

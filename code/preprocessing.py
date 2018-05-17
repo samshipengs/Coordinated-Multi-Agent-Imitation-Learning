@@ -327,7 +327,7 @@ def process_game_data(Data, game_ids, event_threshold, subsample_factor):
 
     game = []
     for i in range(len(game_ids)):
-        logging.info('working on game {0:} | {1:} out of total {2:} games'.format(game_ids[i], i, len(game_ids)))
+        logging.info('working on game {0:} | {1:} out of total {2:} games'.format(game_ids[i], i+1, len(game_ids)))
         game_data = Data.load_game(game_ids[i])
         events_df = pd.DataFrame(game_data['events'])
         game.append(process_game_data_(game_ids[i], events_df, event_threshold, subsample_factor))

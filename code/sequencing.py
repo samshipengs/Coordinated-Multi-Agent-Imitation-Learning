@@ -96,7 +96,7 @@ def get_minibatches(inputs, targets, batchsize, shuffle=True):
     return np.array(batches), np.array(target_batches)
 
 
-def iterate_minibatches(inputs, targets, batchsize, seq_len, shuffle=True):
+def iterate_minibatches(inputs, targets, batchsize, shuffle=True):
     '''
         same as get_minibatches, except returns a generator
     '''
@@ -109,10 +109,6 @@ def iterate_minibatches(inputs, targets, batchsize, seq_len, shuffle=True):
             excerpt = indices[start_idx:start_idx + batchsize]
         else:
             excerpt = slice(start_idx, start_idx + batchsize)
-        x, y = inputs[excerpt], targets[excerpt]
-        if x.shape[1] > seq_len:
-            yield None
-        else:
-            yield x, y
+        yield inputs[excerpt], targets[excerpt]
 
 
