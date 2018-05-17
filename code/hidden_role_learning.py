@@ -1,5 +1,5 @@
 # features.py
-import glob, os, sys, math, warnings, copy, time, glob
+import glob, os, sys, math, warnings, copy, time, glob, logging
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance
@@ -7,15 +7,18 @@ import pandas as pd
 from scipy.stats import multivariate_normal
 from hmmlearn import hmm
 
-
+logging.basicConfig(format='%(asctime)s | %(levelname)s : %(message)s',
+                     level=logging.INFO, stream=sys.stdout)
 # NOT TESTED YET
 # ===================================================================
 class HiddenStructureLearning:
-    def __init__(self, events_df):
+    def __init__(self, events_df, defend_iter=100, offend_iter=100):
         self.df = events_df.copy()
         self.defend_players = list(range(5))
         self.offend_players = list(range(5, 10))
-        
+        self.defend_iter = defend_iter
+        self.offend_iter = offend_iter
+
     # =================================
     # find_features_ind ===============
     # =================================
@@ -57,12 +60,13 @@ class HiddenStructureLearning:
         assert X.shape[1] == 12 # the number of features used to determine hidden roles
         return X, lengths
     
-    def train_hmm(self, player_inds, verbose=True, random_state=42):
+    def train_hmm(self, player_inds, n_iter, random_state=42, verbose=True):
+        logging.info('Training for player_inds: {0} with iterations: {1}'.format(player_inds, n_iter)) 
         assert len(player_inds) == 5 # defend and offend players each are five
         X, lengths = self.create_hmm_input(player_inds=player_inds)
         model = hmm.GaussianHMM(n_components=5, 
                                 covariance_type='diag', 
-                                n_iter=70, 
+                                n_iter=n_iter, 
                                 random_state=random_state,
                                 verbose=verbose)
         model.fit(X, lengths)
@@ -76,8 +80,9 @@ class HiddenStructureLearning:
                 'state_sequence_prob': [state_sequence_prob[i:i+n_samples//5] for i in range(0, n_samples, n_samples//5)], 
                 'cmeans': cmeans}
     
-    def assign_roles(self, player_inds, mode='euclidean'):
-        result = self.train_hmm(player_inds=player_inds)
+    def assign_roles(self, player_inds, n_iter, mode='cosine'):
+        logging.info('Assigning roles by {} method.'.format(mode))
+        result = self.train_hmm(player_inds=player_inds, n_iter=n_iter)
         if mode == 'euclidean':
             ed = distance.cdist(result['X'], result['cmeans'], 'euclidean')
         elif mode == 'cosine':
@@ -95,9 +100,10 @@ class HiddenStructureLearning:
         return col_ind
     
     def reorder_moment(self):
-        defend_role_assignments, defend_result = self.assign_roles(player_inds=self.defend_players)
-        offend_role_assignments, offend_result = self.assign_roles(player_inds=self.offend_players)
-        
+        t1 = time.time()
+        defend_role_assignments, defend_result = self.assign_roles(player_inds=self.defend_players, n_iter=self.defend_iter)
+        offend_role_assignments, offend_result = self.assign_roles(player_inds=self.offend_players, n_iter=self.offend_iter)
+        logging.info('Total HMM training took {}mins'.format((time.time()-t1)/60))
         original = copy.deepcopy(self.df.moments.values)
         reordered = copy.deepcopy(self.df.moments.values)
         # offset is to map the reordered index back to original range for offense players
