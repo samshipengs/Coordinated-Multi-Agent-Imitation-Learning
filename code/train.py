@@ -18,7 +18,7 @@ def train_all_single_policies(single_game, hyper_params, models_path):
     learning_rate = hyper_params['learning_rate']
     n_epoch = hyper_params['n_epoch']
 
-    logging.info('Training with hyper parameters: {}'.format(hyper_params))
+    logging.info('Training with hyper parameters: \n{}'.format(hyper_params))
 
     # policies = range(7) # in total 7 different roles
     policies = [0]  # CHANGE

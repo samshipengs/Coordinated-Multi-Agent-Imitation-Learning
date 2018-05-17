@@ -62,7 +62,7 @@ class HiddenStructureLearning:
         X, lengths = self.create_hmm_input(player_inds=player_inds)
         model = hmm.GaussianHMM(n_components=5, 
                                 covariance_type='diag', 
-                                n_iter=50, 
+                                n_iter=70, 
                                 random_state=random_state,
                                 verbose=verbose)
         model.fit(X, lengths)
