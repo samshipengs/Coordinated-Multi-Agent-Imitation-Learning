@@ -103,7 +103,7 @@ class HiddenStructureLearning:
         t1 = time.time()
         defend_role_assignments, defend_result = self.assign_roles(player_inds=self.defend_players, n_iter=self.defend_iter)
         offend_role_assignments, offend_result = self.assign_roles(player_inds=self.offend_players, n_iter=self.offend_iter)
-        logging.info('Total HMM training took {}mins'.format((time.time()-t1)/60))
+        logging.info('Total HMM training took {0:.2f}mins'.format((time.time()-t1)/60))
         original = copy.deepcopy(self.df.moments.values)
         reordered = copy.deepcopy(self.df.moments.values)
         # offset is to map the reordered index back to original range for offense players
