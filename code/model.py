@@ -48,7 +48,7 @@ def dynamic_raw_rnn(cell, input_, batch_size, seq_length, horizon, output_dim, p
 
 class SinglePolicy:
     def __init__(self, policy_number, use_model, state_size, batch_size, input_dim, output_dim,
-                 learning_rate, seq_len, l1_weight_reg = False, logs_path = './train_logs/'):
+                 learning_rate, seq_len, use_peepholes, l1_weight_reg = False, logs_path = './train_logs/'):
         tf.reset_default_graph()
         # use training start time as the unique naming
         train_time = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
@@ -61,10 +61,11 @@ class SinglePolicy:
         self.learning_rate = learning_rate
         self.seq_len = seq_len 
         self.policy_number = policy_number
-
+        self.use_peepholes = use_peepholes
+        
         # if customized_Model:
         # create 2 LSTMCells
-        rnn_layers = [tf.nn.rnn_cell.LSTMCell(size, use_peepholes=False) for size in state_size]
+        rnn_layers = [tf.nn.rnn_cell.LSTMCell(size, use_peepholes=self.use_peepholes) for size in state_size]
 
         # create a RNN cell composed sequentially of a number of RNNCells
         multi_rnn_cell = tf.nn.rnn_cell.MultiRNNCell(rnn_layers)
@@ -85,10 +86,9 @@ class SinglePolicy:
         elif use_model == 'dynamic_rnn':
             rnn_output, last_states = tf.nn.dynamic_rnn(cell = multi_rnn_cell, 
                                                         inputs = self.X,
-                                                        sequence_length = self.seq_len,
                                                         dtype=tf.float32)
-            dense = tf.layers.dense(inputs=rnn_output, num_outputs=self.dimy)
-            output = tf.layers.dropout(inputs=dense, rate=0.2)
+            dense = tf.layers.dense(inputs=rnn_output, units=self.dimy)
+            output = tf.layers.dropout(inputs=dense, rate=0.4)
         else:
             raise ValueError('Model name provided is not correct.')
 
@@ -110,7 +110,8 @@ class SinglePolicy:
 
         with tf.name_scope('Optimizer'):
             # optimzier
-            self.opt = tf.train.AdamOptimizer(self.learning_rate, name='Adam').minimize(self.loss)
+            # self.opt = tf.train.AdamOptimizer(self.learning_rate, name='Opt').minimize(self.loss)
+            self.opt = tf.train.RMSPropOptimizer(self.learning_rate, name='Opt').minimize(self.loss)
     
         # initialize variables
         init = tf.global_variables_initializer()
@@ -162,7 +163,7 @@ class ImportGraph:
             self.X = self.graph.get_tensor_by_name('train_input:0')
             self.Y = self.graph.get_tensor_by_name('train_label:0')
             self.loss = self.graph.get_tensor_by_name('MSEloss/loss:0')
-            self.opt = self.graph.get_operation_by_name('Optimizer/Adam')
+            self.opt = self.graph.get_operation_by_name('Optimizer/Opt')
             self.pred = self.graph.get_tensor_by_name('prediction:0')
             # self.seq_len = self.graph.get_tensor_by_name('sequence_length:0')
             self.h = self.graph.get_tensor_by_name('horizon:0')
