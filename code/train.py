@@ -39,7 +39,7 @@ def train_all_single_policies(single_game, hyper_params, models_path):
                              input_dim=input_dim, output_dim=2,
                              learning_rate=learning_rate, seq_len=sequence_length-1, l1_weight_reg=False)
         # starts training
-        printn = 100    # how many epochs we print
+        printn = 10    # how many epochs we print
         # look-ahead horizon
         horizon = [0]       # CHANGE
         t_int = time.time() 

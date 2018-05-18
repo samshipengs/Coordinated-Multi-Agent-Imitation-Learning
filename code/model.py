@@ -27,7 +27,7 @@ def dynamic_raw_rnn(cell, input_, batch_size, seq_length, horizon, output_dim, p
             # emit_output = cell_output
             # since we want the 2d x, y position output
             dense = tf.contrib.layers.fully_connected(inputs=cell_output, num_outputs=output_dim)
-            emit_output = tf.contrib.layers.dropout(inputs=dense, keep_prob=0.6)
+            emit_output = tf.contrib.layers.dropout(inputs=dense, keep_prob=0.8)
             # create input
             next_input = tf.cond(finished, 
                                  lambda: tf.zeros([batch_size, input_dim], dtype=tf.float32), 
@@ -64,10 +64,10 @@ class SinglePolicy:
 
         # lstm cells
         lstm1 = tf.contrib.rnn.BasicLSTMCell(state_size, forget_bias=1.)
-        lstm1 = tf.nn.rnn_cell.DropoutWrapper(lstm1, output_keep_prob=0.8)
+        # lstm1 = tf.nn.rnn_cell.DropoutWrapper(lstm1, output_keep_prob=0.8)
 
         lstm2 = tf.contrib.rnn.BasicLSTMCell(state_size, forget_bias=1.)
-        lstm2 = tf.nn.rnn_cell.DropoutWrapper(lstm2, output_keep_prob=0.8)
+        # lstm2 = tf.nn.rnn_cell.DropoutWrapper(lstm2, output_keep_prob=0.8)
 
         lstm_cell = tf.contrib.rnn.MultiRNNCell([lstm1, lstm2])
 
