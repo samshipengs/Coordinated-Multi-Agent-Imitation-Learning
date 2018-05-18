@@ -27,7 +27,7 @@ def dynamic_raw_rnn(cell, input_, batch_size, seq_length, horizon, output_dim, p
             # emit_output = cell_output
             # since we want the 2d x, y position output
             dense = tf.contrib.layers.fully_connected(inputs=cell_output, num_outputs=output_dim)
-            emit_output = tf.contrib.layers.dropout(inputs=dense, keep_prob=0.8)
+            emit_output = tf.layers.dropout(inputs=dense, rate=0.2)
             # create input
             next_input = tf.cond(finished, 
                                  lambda: tf.zeros([batch_size, input_dim], dtype=tf.float32), 
@@ -47,7 +47,7 @@ def dynamic_raw_rnn(cell, input_, batch_size, seq_length, horizon, output_dim, p
 
 
 class SinglePolicy:
-    def __init__(self, policy_number, state_size, batch_size, input_dim, output_dim,
+    def __init__(self, policy_number, use_model, state_size, batch_size, input_dim, output_dim,
                  learning_rate, seq_len, l1_weight_reg = False, logs_path = './train_logs/'):
         tf.reset_default_graph()
         # use training start time as the unique naming
@@ -62,28 +62,35 @@ class SinglePolicy:
         self.seq_len = seq_len 
         self.policy_number = policy_number
 
-        # lstm cells
-        lstm1 = tf.contrib.rnn.BasicLSTMCell(state_size, forget_bias=1.)
-        # lstm1 = tf.nn.rnn_cell.DropoutWrapper(lstm1, output_keep_prob=0.8)
+        # if customized_Model:
+        # create 2 LSTMCells
+        rnn_layers = [tf.nn.rnn_cell.LSTMCell(size, use_peepholes=False) for size in state_size]
 
-        lstm2 = tf.contrib.rnn.BasicLSTMCell(state_size, forget_bias=1.)
-        # lstm2 = tf.nn.rnn_cell.DropoutWrapper(lstm2, output_keep_prob=0.8)
-
-        lstm_cell = tf.contrib.rnn.MultiRNNCell([lstm1, lstm2])
+        # create a RNN cell composed sequentially of a number of RNNCells
+        multi_rnn_cell = tf.nn.rnn_cell.MultiRNNCell(rnn_layers)
 
         # input placeholders
         self.h = tf.placeholder(tf.int32, name='horizon')
         self.X = tf.placeholder(tf.float32, [self.batch_size, self.seq_len, self.dimx], name = 'train_input')
         self.Y = tf.placeholder(tf.float32, [self.batch_size, self.seq_len, self.dimy], name = 'train_label')
-
-        # rnn structure
-        output, last_states = dynamic_raw_rnn(cell = lstm_cell, 
-                                              input_ = self.X,
-                                              batch_size = self.batch_size,
-                                              seq_length = self.seq_len,
-                                              horizon = self.h,
-                                              output_dim = self.dimy, 
-                                              policy_number=self.policy_number)
+        # create rnn structure
+        if use_model == 'raw_rnn':
+            output, last_states = dynamic_raw_rnn(cell = multi_rnn_cell, 
+                                                input_ = self.X,
+                                                batch_size = self.batch_size,
+                                                seq_length = self.seq_len,
+                                                horizon = self.h,
+                                                output_dim = self.dimy, 
+                                                policy_number=self.policy_number)
+        elif use_model == 'dynamic_rnn':
+            rnn_output, last_states = tf.nn.dynamic_rnn(cell = multi_rnn_cell, 
+                                                        inputs = self.X,
+                                                        sequence_length = self.seq_len,
+                                                        dtype=tf.float32)
+            dense = tf.layers.dense(inputs=rnn_output, num_outputs=self.dimy)
+            output = tf.layers.dropout(inputs=dense, rate=0.2)
+        else:
+            raise ValueError('Model name provided is not correct.')
 
         # output as the prediction
         self.pred = tf.identity(output, name='prediction')
