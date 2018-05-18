@@ -19,6 +19,7 @@ def train_all_single_policies(single_game, hyper_params, models_path):
     n_epoch = hyper_params['n_epoch']
     use_model = hyper_params['use_model'] 
     use_peepholes = hyper_params['use_peepholes'] 
+    rate = hyper_params['dropout_rate']
     logging.info('Training with hyper parameters: \n{}'.format(hyper_params))
 
     # policies = range(7) # in total 7 different roles
@@ -37,7 +38,7 @@ def train_all_single_policies(single_game, hyper_params, models_path):
 
         # create model
         model = SinglePolicy(policy_number=policy, use_model=use_model, use_peepholes=use_peepholes, state_size=state_size, 
-                             batch_size=batch_size, input_dim=input_dim, output_dim=2,
+                             batch_size=batch_size, input_dim=input_dim, output_dim=2, rate=rate,
                              learning_rate=learning_rate, seq_len=sequence_length-1, l1_weight_reg=False)
         # starts training
         printn = 10    # how many epochs we print
