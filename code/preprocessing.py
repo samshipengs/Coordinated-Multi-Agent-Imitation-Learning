@@ -335,7 +335,7 @@ def process_game_data(Data, game_ids, event_threshold, subsample_factor):
     df = pd.concat(game, axis=0)
     # hidden role learning
     logging.debug('learning hidden roles')
-    HSL = HiddenStructureLearning(df, defend_iter=120, offend_iter=140)
+    HSL = HiddenStructureLearning(df, libmode='hmmlearn', tol=1e-4, defend_iter=1000, offend_iter=1000)
     result = HSL.reorder_moment()
     # subsample
     result = subsample_sequence(result, subsample_factor)

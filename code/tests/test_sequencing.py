@@ -98,6 +98,11 @@ class TestPreProcessing(unittest.TestCase):
                         self.assertListEqual(train_yi[0][0].tolist(), train_xi[0][1][:2].tolist())
                         self.assertListEqual(train_yi[-1][0].tolist(), train_xi[-1][1][:2].tolist())
 
+    def test_iterate_batch_basic(self):
+        sample = np.arange(12)
+        batchsize1 = 3
+        b1, b2 = iterate_minibatches(sample, sample+1, batchsize1)
+        
 
 
 if __name__ == '__main__':

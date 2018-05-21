@@ -391,31 +391,36 @@ def make_video(images, outvid, fps=20):
     print("The output video is {}".format(outvid))
 
 
-def plot_check(single_game, plt_ind=0):
+def plot_check(game_data, plt_ind=0):
     '''  
         Use plot to check if the game (list of events where each event is a list of moments) data
         is correct or not
     ''' 
     # cerate a simple plot shows the trajectory
-    assert plt_ind < len(single_game), 'The plotting index is larger than the length of the game.'
-    g = single_game[plt_ind]
-    plt.figure(figsize=(5,7))
-    plt_dim = 10*2 # 10 players componenet each with 4 (x,y,vx,vy)
-    # create color scheme
-    c = ['b']*10 + ['r']*10
-    for i in range(0, plt_dim, 2): # jump around each 4 
+    assert plt_ind < len(game_data), 'The plotting index is larger than the length of the game.'
+    # just plot the chosen index
+    g = game_data[plt_ind]
+    # setup ploting figure suze
+    plt.figure(figsize=(7,9))
+    # total dimension to plot
+    plt_dim = 11*2 # 10 players componenet each with 2 (x,y) + 1 bball with (x,y)
+    # create color scheme for different object
+    c = ['b']*10 + ['r']*10 + ['green']
+    # secs per frame # 2 is the subfactor # and another 2 is to increase the visibility of the arrow
+    sf = 1/25*2*2
+    for i in range(0, plt_dim, 2): # jump around each 2 
         x_i, y_i = g[:, i], g[:, i+1]
-        if sum(x_i) !=0 and sum(y_i) != 0:
-            for k in range(len(x_i)):
-                if x_i[k] == y_i[k] == 0:
-                    print('Encountering all zeros, this is not supposed to happen!!!')
-                    print(sum(x_i), sum(y_i))
-                    if c[i] == 'b':
-                        plt.plot(x_i[k], y_i[k], linestyle="None", marker="x", markersize=1, color=c[i])
-                    else:
-                        plt.plot(x_i[k], y_i[k], linestyle="None", marker="+", markersize=1, color=c[i])
-                else:
-                    plt.plot(x_i[k], y_i[k], linestyle="None", marker="o", markersize=k/len(g)*10, color=c[i])
+        # also get the velocity
+        vx_i, vy_i = g[:, 106+i], g[:, 106+i+1] 
+        for t in range(len(x_i)):
+            # last step point we add an arrow to indicate the direction where its going 
+            if t == len(x_i) - 1:
+                plt.arrow(x_i[t], y_i[t], vx_i[t]*sf, vy_i[t]*sf, head_width=1, head_length=0.5, fc='k', ec='k')    
+            else:                
+                plt.plot(x_i[t], y_i[t], linestyle="None", marker="o", markersize=t/len(g)*10, color=c[i])
+    # plot hoop
+    hoop_xy = np.array([3.917, 25])
+    plt.plot(hoop_xy[0], hoop_xy[1], marker="o", markersize=25, color='black', mfc='none')
     plt.grid(True)
 
 

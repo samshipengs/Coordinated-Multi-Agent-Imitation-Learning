@@ -1,15 +1,16 @@
+# train.py
+import time, sys, logging
+from sklearn.model_selection import train_test_split
+import numpy as np
 # customized ftns 
 from sequencing import get_sequences, get_minibatches, iterate_minibatches, subsample_sequence
-import time, sys, logging
-
-import numpy as np
 from model import SinglePolicy
 
 
 logging.basicConfig(format='%(asctime)s | %(levelname)s : %(message)s',
                      level=logging.INFO, stream=sys.stdout)
 
-def train_all_single_policies(single_game, hyper_params, models_path):
+def train_all_single_policies(game_data, hyper_params, models_path):
     batch_size = hyper_params['batch_size']
     sequence_length = hyper_params['sequence_length']
     overlap = hyper_params['overlap']
@@ -28,12 +29,19 @@ def train_all_single_policies(single_game, hyper_params, models_path):
         logging.info('Wroking on policy {}'.format(policy))
         # first get the right data
         # pad short sequence and chunk long sequence with overlaps
-        train, target = get_sequences(single_game, policy, sequence_length, overlap)
+        train, target = get_sequences(game_data, policy, sequence_length, overlap)
         # create train and test set
-        p = 0.8 # train percentage
-        divider = int(len(train)*p)
-        train_game, test_game = np.copy(train[:divider]), np.copy(train[divider:])
-        train_target, test_target = np.copy(target[:divider]), np.copy(target[divider:])
+        # p = 0.8 # train percentage
+        # divider = int(len(train)*p)
+        # train_game, test_game = np.copy(train[:divider]), np.copy(train[divider:])
+        # train_target, test_target = np.copy(target[:divider]), np.copy(target[divider:])
+        # train_ind, test_ind = train_test_split(range(len(game_data), train_size=train_p, shuffle=True))
+        # train_game, test_game = np.copy(train[train_ind]), np.copy(train[test_ind])
+        # train_target, test_target = np.copy(target[train_ind]), np.copy(target[test_ind])
+        train_p = 0.8 # train percentage
+        train_game, test_game, train_target, test_target = train_test_split(train, target, train_size=train_p, random_state=42)
+        train_game, test_game, train_target, test_target = np.copy(train_game), np.copy(test_game), np.copy(train_target), np.copy(test_target) 
+        print(train_game[0].shape, type(train_target), type(train_game), train_target[0].shape)
         logging.info('train len: {} | test shape: {}'.format(len(train_game), len(test_game)))
 
         # create model

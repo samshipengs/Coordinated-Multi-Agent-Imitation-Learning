@@ -73,7 +73,7 @@ def get_sequences(single_game, policy, sequence_length, overlap, n_fts=2):
 
 def get_minibatches(inputs, targets, batchsize, shuffle=True):
     '''
-        inputs: A list of events where each event is a sequence (array) of moments
+        inputs: An array of events where each event is a sequence (array) of moments
                 with sequence_length
         targets: target created by shifting 1 from inputs
         batchsize: desired batch size
@@ -100,16 +100,30 @@ def get_minibatches(inputs, targets, batchsize, shuffle=True):
 def iterate_minibatches(inputs, targets, batchsize, shuffle=True):
     '''
         same as get_minibatches, except returns a generator
+        inputs: An array of events, where each events is an array with sequence_length number of rows
+        targets: target created by shifting 1 from inputs
+        batchsize: desired batch size
+        shuffle: Shuffle input data
     '''
     assert len(inputs) == len(targets)
+    assert len(inputs) >= batchsize
+    
     if shuffle:
         indices = np.arange(len(inputs))
         np.random.shuffle(indices)
-    for start_idx in range(0, len(inputs) - batchsize + 1, batchsize):
+    for start_idx in range(0, len(inputs), batchsize):
         if shuffle:
-            excerpt = indices[start_idx:start_idx + batchsize]
+            # grab last one if not complete
+            if len(inputs) % batchsize !=0 and start_idx + batchsize >= len(inputs):
+                excerpt = indices[len(inputs)-batchsize:len(inputs)]
+            else:
+                excerpt = indices[start_idx:start_idx + batchsize]
         else:
-            excerpt = slice(start_idx, start_idx + batchsize)
+            # grab last one if not complete
+            if len(inputs) % batchsize !=0 and start_idx + batchsize >= len(inputs):
+                excerpt = slice(len(inputs)-batchsize, len(inputs))
+            else:
+                excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
 
 

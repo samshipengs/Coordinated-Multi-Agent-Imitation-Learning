@@ -12,8 +12,10 @@ logging.basicConfig(format='%(asctime)s | %(levelname)s : %(message)s',
 # NOT TESTED YET
 # ===================================================================
 class HiddenStructureLearning:
-    def __init__(self, events_df, defend_iter=100, offend_iter=100):
+    def __init__(self, events_df, libmode, tol=1e-4, defend_iter=100, offend_iter=100):
         self.df = events_df.copy()
+        self.libmode = libmode
+        self.tol = tol
         self.defend_players = list(range(5))
         self.offend_players = list(range(5, 10))
         self.defend_iter = defend_iter
@@ -48,7 +50,11 @@ class HiddenStructureLearning:
     def create_hmm_input(self, player_inds):
         event = self.df.moments.values
         # create X: array-like, shape (n_samples, n_features)
-        X = np.concatenate([ms[:, self.find_features_ind(player)[1]] for player in player_inds for ms in event], axis=0)
+        player_fts = [ms[:, self.find_features_ind(player)[1]] for player in player_inds for ms in event]
+        if self.libmode == 'pom':
+            return player_fts
+
+        X = np.concatenate(player_fts, axis=0)            
         # create lengths : array-like of integers, shape (n_sequences, )
         lengths = [len(ms) for player in player_inds for ms in event]
 
@@ -67,17 +73,23 @@ class HiddenStructureLearning:
         model = hmm.GaussianHMM(n_components=5, 
                                 covariance_type='diag', 
                                 n_iter=n_iter, 
+                                tol=self.tol,
                                 random_state=random_state,
                                 verbose=verbose)
         model.fit(X, lengths)
-        state_sequence = model.predict(X, lengths)
-        state_sequence_prob = model.predict_proba(X, lengths) # (n_samples, n_components)
-        n_samples, _ = state_sequence_prob.shape
+        # state_sequence = model.predict(X, lengths)
+        # state_sequence_prob = model.predict_proba(X, lengths) # (n_samples, n_components)
+        # n_samples, _ = state_sequence_prob.shape
         cmeans = model.means_
+        # return {'X': X,
+        #         'lengths': lengths,
+        #         'state_sequence': state_sequence.reshape(5, -1),  # the shape here can be done because the original input is ordered by players chunk
+        #         'state_sequence_prob': [state_sequence_prob[i:i+n_samples//5] for i in range(0, n_samples, n_samples//5)], 
+        #         'cmeans': cmeans}
         return {'X': X,
                 'lengths': lengths,
-                'state_sequence': state_sequence.reshape(5, -1),  # the shape here can be done because the original input is ordered by players chunk
-                'state_sequence_prob': [state_sequence_prob[i:i+n_samples//5] for i in range(0, n_samples, n_samples//5)], 
+                # 'state_sequence': state_sequence.reshape(5, -1),  # the shape here can be done because the original input is ordered by players chunk
+                # 'state_sequence_prob': [state_sequence_prob[i:i+n_samples//5] for i in range(0, n_samples, n_samples//5)], 
                 'cmeans': cmeans}
     
     def assign_roles(self, player_inds, n_iter, mode='cosine'):
@@ -96,7 +108,7 @@ class HiddenStructureLearning:
         return role_assignments, result
 
     def assign_ind(self, cost):
-        row_ind, col_ind = linear_sum_assignment(cost)
+        _, col_ind = linear_sum_assignment(cost)
         return col_ind
     
     def reorder_moment(self):
