@@ -56,7 +56,7 @@ class SinglePolicy:
         # hyper-parameters
         self.state_size = state_size
         self.batch_size = batch_size
-        self.dimx = input_dim # 4(x,y,vx,vy)*14 + 6 = 62
+        self.dimx = input_dim
         self.dimy = output_dim 
         self.learning_rate = learning_rate
         self.seq_len = seq_len 
@@ -65,7 +65,6 @@ class SinglePolicy:
         self.rate = rate
 
         # input placeholders
-        self.h = tf.placeholder(tf.int32, name='horizon')
         self.X = tf.placeholder(tf.float32, [self.batch_size, self.seq_len, self.dimx], name = 'train_input')
         self.Y = tf.placeholder(tf.float32, [self.batch_size, self.seq_len, self.dimy], name = 'train_label')
         # create rnn structure
@@ -79,7 +78,7 @@ class SinglePolicy:
                                                 input_ = self.X,
                                                 batch_size = self.batch_size,
                                                 seq_length = self.seq_len,
-                                                horizon = self.h,
+                                                horizon = 0,
                                                 output_dim = self.dimy, 
                                                 rate = self.rate,
                                                 policy_number=self.policy_number)
@@ -145,13 +144,16 @@ class SinglePolicy:
         self.train_writer = tf.summary.FileWriter(logs_path+'/train'+train_time, graph=tf.get_default_graph())
         self.valid_writer = tf.summary.FileWriter(logs_path+'/valid'+train_time, graph=tf.get_default_graph())
 
-    def train(self, train_xi, train_yi, k):
+    def train_backward_pass(self, train_xi, train_yi):
         return self.sess.run([self.pred, self.loss, self.opt, self.train_summary], 
-                             feed_dict={self.X: train_xi, self.Y: train_yi, self.h: k})
+                             feed_dict={self.X: train_xi, self.Y: train_yi})
     
-    def validate(self, val_xi, val_yi, k):
+    def train_forward_pass(self, train_xi):
+        return self.sess.run([self.pred], feed_dict={self.X: train_xi})
+
+    def validate_forward_pass(self, val_xi, val_yi):
         return self.sess.run([self.loss, self.valid_summary], 
-                             feed_dict={self.X: val_xi, self.Y: val_yi, self.h: k})
+                             feed_dict={self.X: val_xi, self.Y: val_yi})
 
     def save_model(self, models_path):
         # save model
@@ -181,12 +183,12 @@ class ImportGraph:
             self.opt = self.graph.get_operation_by_name('Optimizer/Opt')
             self.pred = self.graph.get_tensor_by_name('prediction:0')
             # self.seq_len = self.graph.get_tensor_by_name('sequence_length:0')
-            self.h = self.graph.get_tensor_by_name('horizon:0')
+            # self.h = self.graph.get_tensor_by_name('horizon:0')
 
-    def forward_pass(self, input_x, h):
+    def forward_pass(self, input_x):
         return self.sess.run([self.pred], 
-                             feed_dict={self.X: input_x, self.h: h})
+                             feed_dict={self.X: input_x})
 
-    def backward_pass(self, input_x, input_y, h):
+    def backward_pass(self, input_x, input_y):
         return self.sess.run([self.pred, self.loss, self.opt], 
-                            feed_dict={self.X: input_x, self.Y: input_y, self.h: h})
+                            feed_dict={self.X: input_x, self.Y: input_y})

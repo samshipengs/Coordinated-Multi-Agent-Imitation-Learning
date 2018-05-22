@@ -65,7 +65,6 @@ def get_sequences(single_game, policy, sequence_length, overlap, n_fts=2):
                 for j in range(0, i_len-overlap, sequence_length-overlap)]
             targets = [np.roll(k[:, policy*n_fts:policy*n_fts+2], -1, axis=0)[:-1, :] for k in sequences] # drop the last row as the rolled-back is not real
             sequences = [l[:-1, :] for l in sequences] # since target has dropped one then sequence also drop one
-        
         train += sequences
         target += targets
     return train, target
@@ -105,8 +104,8 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=True):
         batchsize: desired batch size
         shuffle: Shuffle input data
     '''
-    assert len(inputs) == len(targets)
-    assert len(inputs) >= batchsize
+    assert len(inputs) == len(targets), 'inputs len: {0:} | targets len: {1:}'.format(len(inputs), len(targets))
+    assert len(inputs) >= batchsize, 'inputs len: {0:} | batch size: {1:}'.format(len(inputs), batchsize)
     
     if shuffle:
         indices = np.arange(len(inputs))

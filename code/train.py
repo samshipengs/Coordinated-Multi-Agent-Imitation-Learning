@@ -1,15 +1,19 @@
 # train.py
-import time, sys, logging
+import time, sys, os, logging, copy
 from sklearn.model_selection import train_test_split
 import numpy as np
 # customized ftns 
 from sequencing import get_sequences, get_minibatches, iterate_minibatches, subsample_sequence
 from model import SinglePolicy
-
+os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
+logging.getLogger("tensorflow").setLevel(logging.WARNING)
 
 logging.basicConfig(format='%(asctime)s | %(levelname)s : %(message)s',
                      level=logging.INFO, stream=sys.stdout)
 
+# ===============================================================================================
+# train_all_single_policies =====================================================================
+# ===============================================================================================
 def train_all_single_policies(game_data, hyper_params, models_path):
     batch_size = hyper_params['batch_size']
     sequence_length = hyper_params['sequence_length']
@@ -21,27 +25,20 @@ def train_all_single_policies(game_data, hyper_params, models_path):
     use_model = hyper_params['use_model'] 
     use_peepholes = hyper_params['use_peepholes'] 
     rate = hyper_params['dropout_rate']
-    logging.info('Training with hyper parameters: \n{}'.format(hyper_params))
+    policies = hyper_params['policies']
+    horizons = hyper_params['horizons']
 
-    # policies = range(7) # in total 7 different roles
-    policies = [0]  # CHANGE
+    logging.info('Training with setup: \n{}'.format(hyper_params))
+
     for policy in policies:
         logging.info('Wroking on policy {}'.format(policy))
         # first get the right data
         # pad short sequence and chunk long sequence with overlaps
         train, target = get_sequences(game_data, policy, sequence_length, overlap)
-        # create train and test set
-        # p = 0.8 # train percentage
-        # divider = int(len(train)*p)
-        # train_game, test_game = np.copy(train[:divider]), np.copy(train[divider:])
-        # train_target, test_target = np.copy(target[:divider]), np.copy(target[divider:])
-        # train_ind, test_ind = train_test_split(range(len(game_data), train_size=train_p, shuffle=True))
-        # train_game, test_game = np.copy(train[train_ind]), np.copy(train[test_ind])
-        # train_target, test_target = np.copy(target[train_ind]), np.copy(target[test_ind])
-        train_p = 0.8 # train percentage
+        # create random train and test split
+        train_p = 0.5 # train percentage
         train_game, test_game, train_target, test_target = train_test_split(train, target, train_size=train_p, random_state=42)
         train_game, test_game, train_target, test_target = np.copy(train_game), np.copy(test_game), np.copy(train_target), np.copy(test_target) 
-        print(train_game[0].shape, type(train_target), type(train_game), train_target[0].shape)
         logging.info('train len: {} | test shape: {}'.format(len(train_game), len(test_game)))
 
         # create model
@@ -49,13 +46,12 @@ def train_all_single_policies(game_data, hyper_params, models_path):
                              batch_size=batch_size, input_dim=input_dim, output_dim=2, rate=rate,
                              learning_rate=learning_rate, seq_len=sequence_length-1, l1_weight_reg=False)
         # starts training
-        printn = 10    # how many epochs we print
+        printn = 1   # how many epochs we print
         # look-ahead horizon
-        horizon = [0]       # CHANGE
         t_int = time.time() 
         train_step = 0
-        valid_step = 0
-        for k in horizon:
+        valid_step = 0 
+        for k in horizons:
             logging.info('Horizon {0:} {1:}'.format(k, '='*10))
 
             for epoch in range(n_epoch):
@@ -64,10 +60,22 @@ def train_all_single_policies(game_data, hyper_params, models_path):
                 n_train_batch = len(train_game)//batch_size
                 t1 = time.time()
                 for batch in iterate_minibatches(train_game, train_target, batch_size, shuffle=True):
-                    train_xi, train_yi = batch
-                    p, l, _, train_sum = model.train(train_xi, train_yi, k)
+                    train_xi_original, train_yi_original = batch
+                    if k != 0:
+                        # look-ahead
+                        pred = model.train_forward_pass(train_xi_original)
+                        train_xi_updated = copy.deepcopy(train_xi_original)
+                        for h in range(1, k+1): # the steps within each horizon
+                            # index selection: https://github.com/numpy/numpy/issues/5574
+                            update_ind = np.ix_(range(len(train_xi_updated)), range(h, sequence_length-1, k+1), [policy*2, policy*2+1])
+                            train_xi_updated[update_ind] = pred[0][:, range(h-1, sequence_length-2, k+1), :]
+                            pred = model.train_forward_pass(train_xi_updated)
+
+                        pred, loss, _, train_sum = model.train_backward_pass(train_xi_updated, train_yi_original)
+                    else:
+                        pred, loss, _, train_sum = model.train_backward_pass(train_xi_original, train_yi_original)
                     model.train_writer.add_summary(train_sum, train_step)
-                    epoch_loss += l/n_train_batch
+                    epoch_loss += loss/n_train_batch
                     train_step += 1
                 # print out info
                 if epoch%printn ==0:
@@ -77,7 +85,7 @@ def train_all_single_policies(game_data, hyper_params, models_path):
                     valid_loss = 0
                     for test_batch in iterate_minibatches(test_game, test_target, batch_size, shuffle=False):
                         val_xi, val_yi = test_batch
-                        val_l, valid_sum = model.validate(val_xi, val_yi, k)
+                        val_l, valid_sum = model.validate_forward_pass(val_xi, val_yi)
 
                         model.valid_writer.add_summary(valid_sum, valid_step)
                         valid_loss += val_l/n_val_batch
