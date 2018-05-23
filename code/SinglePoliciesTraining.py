@@ -25,8 +25,8 @@ Data = LoadData(main_dir, game_dir)
 models_path = './models/' 
 
 # Pre-process 
-# all_games_id = [i.split('/')[-1].split('.')[0] for i in glob.glob('../data/*.pkl')]
-all_games_id = ['0021500009']
+all_games_id = [i.split('/')[-1].split('.')[0] for i in glob.glob('../data/*.pkl')]
+# all_games_id = ['0021500009']
 
 event_threshold = 100
 subsample_factor = 2
@@ -56,8 +56,8 @@ hyper_params = {'use_model': 'dynamic_rnn_layer_norm',
                 'input_dim': 179,
                 'dropout_rate': 0.4,
                 'learning_rate': 0.001,
-                'n_epoch': int(2),
-                'printn': int(1e3),
+                'n_epoch': int(1e3),
+                'printn': int(1e2),
                 'policies': [0, 1, 2, 3, 4],
                 'horizons': list(range(5))}
 

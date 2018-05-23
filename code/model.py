@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.python.ops.rnn import _transpose_batch_time
 from datetime import datetime
-import os
+import os, logging
 os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
 logging.getLogger("tensorflow").setLevel(logging.WARNING)
 
