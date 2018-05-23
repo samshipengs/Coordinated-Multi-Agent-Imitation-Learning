@@ -15,6 +15,8 @@ logging.basicConfig(format='%(asctime)s | %(levelname)s : %(message)s',
 # train_all_single_policies =====================================================================
 # ===============================================================================================
 def train_all_single_policies(game_data, hyper_params, models_path):
+    # get all the hyper-params and setup parameters
+    train_p = hyper_params['train_percentage']
     batch_size = hyper_params['batch_size']
     sequence_length = hyper_params['sequence_length']
     overlap = hyper_params['overlap']
@@ -22,6 +24,7 @@ def train_all_single_policies(game_data, hyper_params, models_path):
     input_dim = hyper_params['input_dim']
     learning_rate = hyper_params['learning_rate']
     n_epoch = hyper_params['n_epoch']
+    printn = hyper_params['printn']
     use_model = hyper_params['use_model'] 
     use_peepholes = hyper_params['use_peepholes'] 
     rate = hyper_params['dropout_rate']
@@ -36,7 +39,6 @@ def train_all_single_policies(game_data, hyper_params, models_path):
         # pad short sequence and chunk long sequence with overlaps
         train, target = get_sequences(game_data, policy, sequence_length, overlap)
         # create random train and test split
-        train_p = 0.5 # train percentage
         train_game, test_game, train_target, test_target = train_test_split(train, target, train_size=train_p, random_state=42)
         train_game, test_game, train_target, test_target = np.copy(train_game), np.copy(test_game), np.copy(train_target), np.copy(test_target) 
         logging.info('train len: {} | test shape: {}'.format(len(train_game), len(test_game)))
@@ -46,41 +48,43 @@ def train_all_single_policies(game_data, hyper_params, models_path):
                              batch_size=batch_size, input_dim=input_dim, output_dim=2, rate=rate,
                              learning_rate=learning_rate, seq_len=sequence_length-1, l1_weight_reg=False)
         # starts training
-        printn = 1   # how many epochs we print
         # look-ahead horizon
-        t_int = time.time() 
-        train_step = 0
-        valid_step = 0 
+        t_int = time.time()                                             # overall initial time   
+        train_step = 0                                                  # this is used to record number of steps for training
+        valid_step = 0                                                  # steops for validation
+        # gradually increase the training roll-out horizon, in hope to reduce drifting errors
         for k in horizons:
             logging.info('Horizon {0:} {1:}'.format(k, '='*10))
-
+            # epochs
             for epoch in range(n_epoch):
-                epoch_loss =0.
-                # number of train batches
-                n_train_batch = len(train_game)//batch_size
-                t1 = time.time()
+                epoch_loss = 0.                                         # make a note of the epoch loss
+                n_train_batch = len(train_game)//batch_size             # number of train batches
+                t1 = time.time()                                        # beginning time of each epoch
+                # iterate through all the batches
                 for batch in iterate_minibatches(train_game, train_target, batch_size, shuffle=True):
                     train_xi_original, train_yi_original = batch
+                    # if there's look-ahead horizon (k = 0 is just regular rnn trianing)
                     if k != 0:
                         # look-ahead
                         pred = model.train_forward_pass(train_xi_original)
                         train_xi_updated = copy.deepcopy(train_xi_original)
-                        for h in range(1, k+1): # the steps within each horizon
+                        for h in range(1, k+1):                         # the steps within each horizon
                             # index selection: https://github.com/numpy/numpy/issues/5574
-                            update_ind = np.ix_(range(len(train_xi_updated)), range(h, sequence_length-1, k+1), [policy*2, policy*2+1])
-                            train_xi_updated[update_ind] = pred[0][:, range(h-1, sequence_length-2, k+1), :]
-                            pred = model.train_forward_pass(train_xi_updated)
-
+                            update_ind = np.ix_(range(len(train_xi_updated)), range(h, sequence_length-1, h+1), [policy*2, policy*2+1])
+                            train_xi_updated[update_ind] = pred[0][:, range(h-1, sequence_length-2, h+1), :]
+                            if h != k:                                  # no need to make a prediction if no more is needed
+                                pred = model.train_forward_pass(train_xi_updated)
                         pred, loss, _, train_sum = model.train_backward_pass(train_xi_updated, train_yi_original)
+                    # else k = 0 regular rnn training
                     else:
                         pred, loss, _, train_sum = model.train_backward_pass(train_xi_original, train_yi_original)
+                    # write to tensorboard summary
                     model.train_writer.add_summary(train_sum, train_step)
                     epoch_loss += loss/n_train_batch
                     train_step += 1
                 # print out info
-                if epoch%printn ==0:
-                    # number of validation batches
-                    n_val_batch = len(test_game)//batch_size
+                if epoch % printn == 0:
+                    n_val_batch = len(test_game)//batch_size            # number of validation batches
                     t2 = time.time()
                     valid_loss = 0
                     for test_batch in iterate_minibatches(test_game, test_target, batch_size, shuffle=False):

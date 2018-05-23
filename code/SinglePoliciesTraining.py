@@ -47,16 +47,18 @@ overlap = 25
 batch_size = 128
 
 hyper_params = {'use_model': 'dynamic_rnn_layer_norm',
+                'train_percentage': 0.85,
                 'batch_size': batch_size,
                 'sequence_length': sequence_length,
                 'overlap': overlap,
-                'state_size': [128, 128],
+                'state_size': [128],
                 'use_peepholes': None,
                 'input_dim': 179,
-                'dropout_rate': 0.6,
-                'learning_rate': 0.01,
+                'dropout_rate': 0.4,
+                'learning_rate': 0.001,
                 'n_epoch': int(2),
+                'printn': int(1e3),
                 'policies': [0, 1, 2, 3, 4],
-                'horizons': list(range(3))}
+                'horizons': list(range(5))}
 
 train_all_single_policies(game_data, hyper_params, models_path)

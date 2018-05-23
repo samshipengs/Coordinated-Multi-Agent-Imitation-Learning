@@ -2,6 +2,8 @@ import tensorflow as tf
 from tensorflow.python.ops.rnn import _transpose_batch_time
 from datetime import datetime
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
+logging.getLogger("tensorflow").setLevel(logging.WARNING)
 
 
 def dynamic_raw_rnn(cell, input_, batch_size, seq_length, horizon, output_dim, rate, policy_number):
