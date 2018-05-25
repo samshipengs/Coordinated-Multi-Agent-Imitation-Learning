@@ -44,7 +44,7 @@ print('Final number of events:', len(game_data))
 # Build graph and starts training for all single policies
 sequence_length = 50
 overlap = 25
-batch_size = 128
+batch_size = 256
 
 hyper_params = {'use_model': 'dynamic_rnn_layer_norm',
                 'train_percentage': 0.85,
@@ -56,7 +56,7 @@ hyper_params = {'use_model': 'dynamic_rnn_layer_norm',
                 'input_dim': 179,
                 'dropout_rate': 0.4,
                 'learning_rate': 0.001,
-                'n_epoch': int(1e3),
+                'n_epoch': int(5e2),
                 'printn': int(1e2),
                 'policies': [0, 1, 2, 3, 4],
                 'horizons': list(range(5))}
