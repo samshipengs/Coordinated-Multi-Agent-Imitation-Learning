@@ -72,20 +72,13 @@ class HiddenStructureLearning:
         X, lengths = self.create_hmm_input(player_inds=player_inds)
         model = hmm.GaussianHMM(n_components=5, 
                                 covariance_type='diag', 
+                                algorithm='map',
                                 n_iter=n_iter, 
                                 tol=self.tol,
                                 random_state=random_state,
                                 verbose=verbose)
         model.fit(X, lengths)
-        # state_sequence = model.predict(X, lengths)
-        # state_sequence_prob = model.predict_proba(X, lengths) # (n_samples, n_components)
-        # n_samples, _ = state_sequence_prob.shape
         cmeans = model.means_
-        # return {'X': X,
-        #         'lengths': lengths,
-        #         'state_sequence': state_sequence.reshape(5, -1),  # the shape here can be done because the original input is ordered by players chunk
-        #         'state_sequence_prob': [state_sequence_prob[i:i+n_samples//5] for i in range(0, n_samples, n_samples//5)], 
-        #         'cmeans': cmeans}
         return {'X': X,
                 'lengths': lengths,
                 # 'state_sequence': state_sequence.reshape(5, -1),  # the shape here can be done because the original input is ordered by players chunk
