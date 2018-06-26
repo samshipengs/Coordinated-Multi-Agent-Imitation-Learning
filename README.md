@@ -93,10 +93,20 @@ We list out each pre-processing details in the following:
     `reorder_teams` in `preprocessing.py`   
     Reorder the matrix in moments s.t. the first five players data are always from defending player.
     
-## Features
+_Note: Originally we would like to use the play-by-play data to do the data processing but it turns out the play-by-play data itself is not accurate_
+
+### Features
 1. Besides Cartesian coordiantes for basketball and all the players from the data, we also add Polar coodinates. 
 2. The distance of each players to the ball and hoop in polar coordiantes.
 3. Add velocities for both players and basketball (in Cartesian coordinates).
+
+You can check out the details in `create_static_features` and `create_dynamic_features` functions form `features.py`.
+
+Below is an example plot of a game event,
+![trajectory](/images/trajectory.PNG)
+
+### Hidden Structure Learning
+
 
 
 
