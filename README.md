@@ -1,13 +1,15 @@
-## Welcome to GitHub Pages
+## Coordinated-Multi-Agent-Imitation-Learning
 
-You can use the [editor on GitHub](https://github.com/samshipengs/raptors/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+Toronto Raptors had created a ghosting system that would help coaching staff to analyze defend plays better. The game is recorded by camera system above the arena, staff would mark the position of they player where they thought the player should have been and this is the ghost of the player. However, this involves a lot of mannual annotations. In the coordinated multi-agent imitation learning, a data driven method was proposed. (For more details of the Raptors' ghosting system see [Lights, Cameras, Revolution][1]) 
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+So in this repo we attempt to implement the paper [Coordinated-Multi-Agent-Imitation-Learning
+][2] (or [Sloan version][3]) with Tensorflow. 
 
-### Markdown
+### Data
+The update-to-date data is proprietary, but we found a tracking and play-by-play data for 42 Toronto Raptors games
+played in Fall 2015 on this [link][4]. We will use this data for our implementation. 
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
+### 
 ```markdown
 Syntax highlighted code block
 
@@ -35,3 +37,8 @@ Your Pages site will use the layout and styles from the Jekyll theme you have se
 ### Support or Contact
 
 Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+
+[1]http://grantland.com/features/the-toronto-raptors-sportvu-cameras-nba-analytical-revolution/
+[2]https://arxiv.org/pdf/1703.03121.pdf
+[3]https://s3-us-west-1.amazonaws.com/disneyresearch/wp-content/uploads/20170228130457/Data-Driven-Ghosting-using-Deep-Imitation-Learning-Paper1.pdf
+[4]http://www.cs.toronto.edu/~urtasun/courses/CSC2541_Winter17/project_2.pdf
