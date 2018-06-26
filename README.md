@@ -103,14 +103,27 @@ _Note: Originally we would like to use the play-by-play data to do the data proc
 You can check out the details in `create_static_features` and `create_dynamic_features` functions form `features.py`.
 
 Below is an example plot of a game event,
-![trajectory](/images/trajectory.PNG)
+<p align="center">
+  <img src="/images/trajectory.PNG" width="50%">  
+</p>  
+<em>Blue is the defending team, red is the opponent and the green one is the basketball. The arrow indicates the velocity vector for each player. The black circle is the hoop. The smaller the dot is the earlier player is in the sequence</em>
 
 ### Hidden Structure Learning
+Finally we will get into how we want to build the model. It may seem like how we want to approach this i.e. feed the input sequence of data into a LSTM where the label for each current time step is the input of the next time step. However, there are two major issues:
 
+1. Since we are training on input data that contains multiple agents, we need to consider the order of the input. 
+2. A standard one-to-one or many-to-one would not have practical use since in real game we would like to have predictions for next at least several time steps instead of just one prediction at a time.
 
+In this section we mainly talk about the first issue. The input data point at each time step looks like,
 
+$(p_{1,x}, p(1,y), p_{1,vx}, p(1,vy), \cdots, p_{2,x}, p(2,y), p_{2,vx}, p(2,vy), \cdots, p_{10,x}, p(10,y), p_{10,vx}, p(10,vy), \cdots$
 
+we are supposed to feed into data that has consistent order to the model, otherwise the model is going to have a hard time to learn anything. This is known as "index free" multi-agent system. How do we define the order then? by their height, weight or their assigned roles e.g. Power-forward or Point-guard? Using the pre-defined roles sounds more reasonable but they may change during the actual game play. So instead of using fixed roles, the team of this paper suggested to learn the _hidden states/roles_ for each players.    
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+Here we will make use of the [hmmlearn](http://hmmlearn.readthedocs.io/en/latest/api.html#gaussianhmm) library ([pomegranate](https://pomegranate.readthedocs.io/en/latest/) looks like a good option too). We train a Hidden Markov model which would predict the hidden state for each time step, this is done by using [Baum–Welch algorithm](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm) from which we can know the emission probabilities for each hidden roles.  
 
+Naturally we do not need to bother with the emission distribution, Viterbi algorithm would help us to find the most likely sequence of hidden roles. However since we are trying to assign hidden roles to each player then it is possible that different players get assigned the same hidden role (indeed it happened when I run Viterbi to get the sequence of assigned roles). More concretely,
 
+**create latex expression**
+
+**try to create a vis for the hidden state**
