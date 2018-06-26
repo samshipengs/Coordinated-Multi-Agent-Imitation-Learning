@@ -93,7 +93,11 @@ We list out each pre-processing details in the following:
     `reorder_teams` in `preprocessing.py`   
     Reorder the matrix in moments s.t. the first five players data are always from defending player.
     
-_Note: Originally we would like to use the play-by-play data to do the data processing but it turns out the play-by-play data itself is not accurate_
+Originally we would like to use the play-by-play data to do the data processing but it turns out the play-by-play data itself is not accurate. For example, In game 0021500196, event 2, `'time_left': [705, 704, 685, 684]}, 'event_str': ['miss', 'rebound', 'miss', 'rebound']`,
+<p align="center">
+  <img src="/images/inaccurate.gif">  
+</p>  
+For 685.0 the shot clock is at 21.77, which at the time the shot was already missed for a while and the defending team got rebound and was already switching to offense. The event miss should have been marked right after 24s shot clock reset. This is resonable to human eyes but would certain affect the model learning.
 
 ### Features
 1. Besides Cartesian coordiantes for basketball and all the players from the data, we also add Polar coodinates. 
