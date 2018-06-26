@@ -104,7 +104,7 @@ You can check out the details in `create_static_features` and `create_dynamic_fe
 
 Below is an example plot of a game event,
 <p align="center">
-  <img src="/images/trajectory.PNG" width="50%">  
+  <img src="/images/trajectory.png" width="50%">  
 </p>  
 <em>Blue is the defending team, red is the opponent and the green one is the basketball. The arrow indicates the velocity vector for each player. The black circle is the hoop. The smaller the dot is the earlier player is in the sequence</em>
 
