@@ -115,8 +115,7 @@ Finally we will get into how we want to build the model. It may seem like how we
 2. A standard one-to-one or many-to-one would not have practical use since in real game we would like to have predictions for next at least several time steps instead of just one prediction at a time.
 
 In this section we mainly talk about the first issue. The input data point at each time step looks like,
-
-$(p_{1,x}, p(1,y), p_{1,vx}, p(1,vy), \cdots, p_{2,x}, p(2,y), p_{2,vx}, p(2,vy), \cdots, p_{10,x}, p(10,y), p_{10,vx}, p(10,vy), \cdots$
+<a href="https://www.codecogs.com/eqnedit.php?latex=(p_{1,x},&space;p_{1,y},&space;p_{1,vx},&space;p_{1,vy},&space;\cdots,&space;p_{2,x},&space;p_{2,y},&space;p_{2,vx},&space;p_{2,vy},&space;\cdots,&space;p_{10,x},&space;p_{10,y},&space;p_{10,vx},&space;p_{10,vy},&space;\cdots)" target="_blank"><img src="https://latex.codecogs.com/gif.latex?(p_{1,x},&space;p_{1,y},&space;p_{1,vx},&space;p_{1,vy},&space;\cdots,&space;p_{2,x},&space;p_{2,y},&space;p_{2,vx},&space;p_{2,vy},&space;\cdots,&space;p_{10,x},&space;p_{10,y},&space;p_{10,vx},&space;p_{10,vy},&space;\cdots)" title="(p_{1,x}, p_{1,y}, p_{1,vx}, p_{1,vy}, \cdots, p_{2,x}, p_{2,y}, p_{2,vx}, p_{2,vy}, \cdots, p_{10,x}, p_{10,y}, p_{10,vx}, p_{10,vy}, \cdots)" /></a>
 
 we are supposed to feed into data that has consistent order to the model, otherwise the model is going to have a hard time to learn anything. This is known as "index free" multi-agent system. How do we define the order then? by their height, weight or their assigned roles e.g. Power-forward or Point-guard? Using the pre-defined roles sounds more reasonable but they may change during the actual game play. So instead of using fixed roles, the team of this paper suggested to learn the _hidden states/roles_ for each players.    
 
@@ -127,3 +126,4 @@ Naturally we do not need to bother with the emission distribution, Viterbi algor
 **create latex expression**
 
 **try to create a vis for the hidden state**
+
