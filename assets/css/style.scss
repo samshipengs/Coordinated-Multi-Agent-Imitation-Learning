@@ -4,7 +4,7 @@
 @import "{{ site.theme }}";
 nav {
   width: 230px;
-  position: relative;
+  position: fixed;
   top: 20px;
   left:20%;
   margin-left:-580px;
