@@ -143,10 +143,13 @@ We are hoping the model can learn or mimic the trajectory by training on players
 </p> 
 however, the first obvious issue is that in real game we do not have the sequence of player states (unlike in a machine translation problem where you have the complete sentence ready), which are exactly the values we are trying to predict for. If we have these values then we do not to predict them anyway. So simply we do not have the input for a sequence of inputs.
 
-What one could do is to train the model based on available data, use the predicted output of current time step as the next time step input during run time, that is instead of using true value as next time step input we use the output from previous time step. This is doable and looks okay but in run time the model will get baffled by the _drifting or compound error_. As the prediction goes on for longer time steps, the prediction error gets larger and larger to the point where the prediction would be really far off from the realistic trajectories. This happens although the loss value is small in training time. 
+What one could do is to train the model based on available data, use the predicted output of current time step as the next time step input during run time, that is instead of using true value as next time step input we use the output from previous time step. 
 <p align="center">
-  <img src="images/drifting_lstm.png">  
+  <img src="images/drifting.png">  
 </p> 
+
+This is doable and looks okay but in run time the model will get baffled by the _drifting or compound error_. As the prediction goes on for longer time steps, the prediction error gets larger and larger to the point where the prediction would be really far off from the realistic trajectories. This happens although the loss value is small in training time. 
+
 We demonstate this through a simple experiment. Below is a sine signla being added Gaussian noise with mean=2 and standard deviation=1. 
 <p align="center">
   <img src="images/sineg.png">  
@@ -168,6 +171,7 @@ for the sine wave example, the test result becomes much better when we gradually
 </p>
 
 To illustrate this using network connections:
+
 Step 1 | Step 2 | Step 3
 :----------------------:|:----------------------:|:----------------------:|
 ![](images/step1.png)  |  ![](images/step2.png) | ![](images/step3.png)
