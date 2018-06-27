@@ -1,1 +1,4 @@
 theme: jekyll-theme-cayman
+# Reading Files
+include:
+  - assets/js/_main.js
