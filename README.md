@@ -95,7 +95,7 @@ We list out each pre-processing details in the following:
     
 Originally we would like to use the play-by-play data to do the data processing but it turns out the play-by-play data itself is not accurate. For example, In game 0021500196, event 2, `'time_left': [705, 704, 685, 684]}, 'event_str': ['miss', 'rebound', 'miss', 'rebound']`,
 <p align="center">
-  <img src="/images/inaccurate.gif">  
+  <img src="{{ site.baseurl }}/images/inaccurate.gif">  
 </p>  
 For 685.0 the shot clock is at 21.77, which at the time the shot was already missed for a while and the defending team got rebound and was already switching to offense. The event miss should have been marked right after 24s shot clock reset. This is resonable to human eyes but would certain affect the model learning.
 
@@ -108,7 +108,7 @@ You can check out the details in `create_static_features` and `create_dynamic_fe
 
 Below is an example plot of a game event,
 <p align="center">
-  <img src="/images/trajectory.png" width="50%">  
+  <img src="{{ site.baseurl }}/images/trajectory.png" width="50%">  
 </p>  
 <em>Blue is the defending team, red is the opponent and the green one is the basketball. The arrow indicates the velocity vector for each player. The black circle is the hoop. The smaller the dot is the earlier player is in the sequence</em>
 
