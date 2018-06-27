@@ -4,10 +4,10 @@
 @import "{{ site.theme }}";
 nav {
   width: 230px;
-  position: fixed;
+  position: relative;
   top: 220px;
   left:50%;
-  margin-left:-580px;
+  margin-left:-50px;
   text-align: right;
 
   ul {
