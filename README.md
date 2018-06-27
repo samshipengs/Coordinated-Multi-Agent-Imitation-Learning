@@ -145,7 +145,30 @@ however, the first obvious issue is that in real game we do not have the sequenc
 
 What one could do is to train the model based on available data, use the predicted output of current time step as the next time step input during run time, that is instead of using true value as next time step input we use the output from previous time step. This is doable and looks okay but in run time the model will get baffled by the _drifting or compound error_. As the prediction goes on for longer time steps, the prediction error gets larger and larger to the point where the prediction would be really far off from the realistic trajectories. This happens although the loss value is small in training time. 
 <p align="center">
-  <img src="images/reg_lstm.png">  
+  <img src="images/drifting_lstm.png">  
 </p> 
+We demonstate this through a simple experiment. Below is a sine signla being added Gaussian noise with mean=2 and standard deviation=1. 
+<p align="center">
+  <img src="images/sineg.png">  
+</p>
+First we apply regular lstm that uses ground truth as the real input for every time step, the prediction result looks pretty _good_,
+<p align="center">
+  <img src="images/naive.png">  
+</p>
+but this is deceptive because in real settings we need to predict multiple steps ahead instead of relying ground truth. So if we take the trained model and simply make predictions based on previous result, the prediction quickly converges to the mean of the Gaussian noise,
+<p align="center">
+  <img src="images/drift_error.png">  
+</p>
+
 So the paper proposed to let the model see for longer time steps and experience this drifting error during train time. We first start training the regular lstm model where each time step input is ground truth. Then we extend the horizon where the input uses i.e. during training time we use the current time step output as the next step input. We increase the horzion by 1 and repeat. This gives model the experience of handling drifting error in train time, which leads to better performance in real run time setting.
+
+for the sine wave example, the test result becomes much better when we gradually increase the horizon from 0 to 6,
+<p align="center">
+  <img src="images/horizon_fix.png">  
+</p>
+
+To illustrate this using network connections:
+Step 1 | Step 2 | Step 3
+:----------------------:|:----------------------:|:----------------------:|
+![](images/step1.png)  |  ![](images/step2.png) | ![](images/step3.png)
 
