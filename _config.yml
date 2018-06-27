@@ -1,4 +1,2 @@
 theme: jekyll-theme-cayman
-# Reading Files
-include:
-  - assets/js/_main.js
+title: Coordinated Multi-Agent Imitation Learning Implementation
