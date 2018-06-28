@@ -38,11 +38,12 @@ $(document).ready(function() {
       //if you hard code, then use console
       //.log to determine when you want the 
       //nav bar to stick.  
-      console.log($(window).scrollTop())
-    if ($(window).scrollTop() > $('page-header').height()) {
+      console.log($(window).scrollTop());
+      console.log('>>>', $('page-header').height());
+    if ($(window).scrollTop() > 489) {
       $('nav ul').addClass('navbar-fixed');
     }
-    if ($(window).scrollTop() < $('page-header').height()) {
+    if ($(window).scrollTop() < 489) {
       $('nav ul').removeClass('navbar-fixed');
     }
   });
