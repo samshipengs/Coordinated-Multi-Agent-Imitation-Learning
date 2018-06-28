@@ -4,7 +4,7 @@
 @import "{{ site.theme }}";
 nav {
   width: 230px;
-  position: absolute;
+  position: relative;
   top: 200px;
   left:20%;
   margin-left:-580px;
@@ -55,4 +55,11 @@ nav {
     //   padding-right:13px;
     // }
   }
+}
+
+.navbar-fixed {
+  top: 0;
+  z-index: 100;
+position: fixed;
+  width: 100%;
 }
